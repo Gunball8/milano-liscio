@@ -73,6 +73,30 @@ interface Buckets {
   rails: OsmWay[];
   nodes: OsmNode[];
   addresses: (OsmNode | OsmWay)[];
+  pois: (OsmNode | OsmWay)[];
+}
+
+/** Named places for the geocoder (SPEC §6.4): stations, universities, squares, museums, parks, hospitals, churches. */
+const POI_FILTERS = [
+  'nw/railway=station',
+  'nw/public_transport=station',
+  'nw/amenity=university,college,hospital,place_of_worship',
+  'nw/tourism=museum',
+  'nw/leisure=park',
+  'nw/place=square',
+  'nw/historic=city_gate',
+];
+function isPoi(t: Tags): boolean {
+  if (!t['name']) return false;
+  return (
+    t['railway'] === 'station' ||
+    t['public_transport'] === 'station' ||
+    /^(university|college|hospital|place_of_worship)$/.test(t['amenity'] ?? '') ||
+    t['tourism'] === 'museum' ||
+    t['leisure'] === 'park' ||
+    t['place'] === 'square' ||
+    t['historic'] === 'city_gate'
+  );
 }
 
 const RAIL_RE = /^(tram|disused|construction)$/;
@@ -103,11 +127,12 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
     'n/railway=tram_level_crossing,tram_crossing',
     'n/barrier',
     'nw/addr:housenumber',
+    ...POI_FILTERS,
   ]);
   console.log('  osmium add-locations-to-ways (OPL)');
   await osmium(['add-locations-to-ways', '--overwrite', '-f', 'opl', '-o', opl, filtered]);
 
-  const buckets: Buckets = { highways: [], rails: [], nodes: [], addresses: [] };
+  const buckets: Buckets = { highways: [], rails: [], nodes: [], addresses: [], pois: [] };
   const rl = createInterface({ input: createReadStream(opl), crlfDelay: Infinity });
   for await (const line of rl) {
     if (line.length === 0) continue;
@@ -136,6 +161,7 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
       const node: OsmNode = { type: 'node', id, lat, lon, timestamp, tags };
       if (CROSSING_RE.test(tags['railway'] ?? '') || tags['barrier']) buckets.nodes.push(node);
       if (tags['addr:housenumber']) buckets.addresses.push(node);
+      if (isPoi(tags)) buckets.pois.push(node);
     } else if (kind === 'w') {
       const nodes: number[] = [];
       const geometry: LatLon[] = [];
@@ -154,13 +180,12 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
       const way: OsmWay = { type: 'way', id, timestamp, version, nodes, geometry, tags };
       if (tags['highway']) buckets.highways.push(way);
       if (RAIL_RE.test(tags['railway'] ?? '') || tags['disused:railway'] === 'tram') buckets.rails.push(way);
-      if (tags['addr:housenumber']) {
-        const center = {
-          lat: geometry.reduce((s, g) => s + g.lat, 0) / geometry.length,
-          lon: geometry.reduce((s, g) => s + g.lon, 0) / geometry.length,
-        };
-        buckets.addresses.push({ type: 'way', id, timestamp, nodes: [], center, tags });
-      }
+      const center = {
+        lat: geometry.reduce((s, g) => s + g.lat, 0) / geometry.length,
+        lon: geometry.reduce((s, g) => s + g.lon, 0) / geometry.length,
+      };
+      if (tags['addr:housenumber']) buckets.addresses.push({ type: 'way', id, timestamp, nodes: [], center, tags });
+      if (isPoi(tags)) buckets.pois.push({ type: 'way', id, timestamp, nodes: [], center, tags });
     }
   }
 

@@ -4,6 +4,12 @@ import type { OsmWay } from './osm.ts';
 export interface Edge {
   /** Index into the way array passed to splitIntoEdges. */
   wayIdx: number;
+  /** OSM node ids at both ends (build-time only). */
+  startNode: number;
+  endNode: number;
+  /** Position of the first and last vertex in the way's node list. */
+  startPos: number;
+  endPos: number;
   /** Projected coordinates in meters, interleaved x0,y0,x1,y1,... */
   xy: Float64Array;
   /** Geographic coordinates, interleaved lon0,lat0,lon1,lat1,... */
@@ -38,7 +44,7 @@ export function splitIntoEdges(ways: OsmWay[]): Edge[] {
         xy[2 * k + 1] = P.y(p.lat);
         if (k > 0) length += Math.hypot(xy[2 * k]! - xy[2 * k - 2]!, xy[2 * k + 1]! - xy[2 * k - 1]!);
       }
-      edges.push({ wayIdx, xy, ll, length });
+      edges.push({ wayIdx, startNode: w.nodes[start]!, endNode: w.nodes[i]!, startPos: start, endPos: i, xy, ll, length });
       start = i;
     }
   });

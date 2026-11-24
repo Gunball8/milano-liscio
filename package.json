@@ -7,6 +7,10 @@
   "scripts": {
     "data:fetch": "tsx scripts/01-fetch-osm.ts",
     "data:audit": "tsx scripts/02-audit.ts",
+    "data:graph": "tsx scripts/03-build-graph.ts",
+    "data:build": "pnpm data:fetch && pnpm data:graph",
+    "route": "tsx scripts/route-cli.ts",
+    "calibrate": "tsx scripts/calibrate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

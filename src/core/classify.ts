@@ -1,45 +1,98 @@
 /**
  * Tag classification shared by the build scripts (Node) and the routing worker.
- * Pure TypeScript, no DOM, no Node APIs. Rules: SPEC §6.1 (bike access) and §6.2 (surface classes).
+ * Pure TypeScript, no DOM, no Node APIs. Rules: SPEC §6.1 (bike access) and §6.2 (surface classes),
+ * plus the phase 0 decisions recorded in docs/audit-notes.md (surface_bike precedence, extra values).
  */
 
 export type Tags = Record<string, string>;
 
 export const SURFACE_CLASSES = ['SMOOTH', 'SLABS', 'PAVE', 'LOOSE', 'UNKNOWN'] as const;
 export type SurfaceClass = (typeof SURFACE_CLASSES)[number];
+export const SURFACE_CODE: Record<SurfaceClass, number> = { SMOOTH: 0, SLABS: 1, PAVE: 2, LOOSE: 3, UNKNOWN: 4 };
 
-const SMOOTH_VALUES = new Set(['asphalt', 'concrete', 'concrete:plates', 'concrete:lanes', 'paved', 'chipseal', 'metal', 'rubber']);
-const PAVE_VALUES = new Set(['sett', 'cobblestone', 'cobblestone:flattened', 'unhewn_cobblestone']);
+const SMOOTH_VALUES = new Set([
+  'asphalt', 'concrete', 'concrete:plates', 'concrete:lanes', 'paved', 'chipseal', 'metal', 'rubber',
+  // phase 0 decision 5
+  'wood', 'metal_grid', 'tiles', 'tartan', 'linoleum',
+]);
+const PAVE_VALUES = new Set([
+  'sett', 'cobblestone', 'cobblestone:flattened', 'unhewn_cobblestone',
+  // phase 0 decision 5
+  'cobblestone:rounded', 'stone',
+]);
 const LOOSE_VALUES = new Set([
   'unpaved', 'compacted', 'fine_gravel', 'gravel', 'pebblestone', 'ground', 'dirt', 'earth', 'grass', 'sand', 'mud',
+  // phase 0 decision 5
+  'grass_paver', 'woodchips',
 ]);
+
+/** Severity used to merge multi-valued tags ("a;b"): the worst recognized class wins. */
+const SEVERITY: Record<SurfaceClass, number> = { SMOOTH: 0, UNKNOWN: 1, LOOSE: 2, SLABS: 3, PAVE: 4 };
 
 export interface SurfaceResult {
   cls: SurfaceClass;
-  /** false when a `surface` value exists but is not in the §6.2 table (classified UNKNOWN, must be logged). */
+  /** false when a value exists but is not in the table (classified UNKNOWN, must be logged). */
   recognized: boolean;
 }
 
-export function classifySurfaceValue(value: string | undefined): SurfaceResult {
-  if (value === undefined || value === '') return { cls: 'UNKNOWN', recognized: true };
+function classifySingle(value: string): SurfaceResult {
   if (SMOOTH_VALUES.has(value)) return { cls: 'SMOOTH', recognized: true };
   if (value === 'bricks' || value === 'paving_stones' || value.startsWith('paving_stones:')) return { cls: 'SLABS', recognized: true };
   if (PAVE_VALUES.has(value)) return { cls: 'PAVE', recognized: true };
+  // Milanese local scheme: milanese_paving, milanese_paving:rails, milanese_paving:lanes
+  if (value === 'milanese_paving' || value.startsWith('milanese_paving:')) return { cls: 'PAVE', recognized: true };
   if (LOOSE_VALUES.has(value)) return { cls: 'LOOSE', recognized: true };
   return { cls: 'UNKNOWN', recognized: false };
 }
 
+export function classifySurfaceValue(value: string | undefined): SurfaceResult {
+  if (value === undefined || value === '') return { cls: 'UNKNOWN', recognized: true };
+  if (!value.includes(';')) return classifySingle(value);
+  const parts = value.split(';').map((p) => classifySingle(p.trim()));
+  if (parts.some((p) => !p.recognized)) return { cls: 'UNKNOWN', recognized: false };
+  return parts.reduce((a, b) => (SEVERITY[b.cls] > SEVERITY[a.cls] ? b : a));
+}
+
 /**
- * Surface class of the way itself (road surface), before any per-direction cycleway override.
- * `surface_bike=milanese_paving` forces PAVE; `smoothness=excellent/good` downgrades PAVE to SLABS.
+ * Surface class of the strip a cyclist rides on, ignoring direction-specific cycle lanes.
+ * `surface_bike` (Milanese local scheme) takes precedence over `surface` when recognized (decision 4).
+ * `smoothness=excellent/good` downgrades PAVE to SLABS.
  */
 export function classifyWaySurface(tags: Tags): SurfaceResult {
-  const base: SurfaceResult =
-    tags['surface_bike'] === 'milanese_paving' ? { cls: 'PAVE', recognized: true } : classifySurfaceValue(tags['surface']);
+  let base = classifySurfaceValue(tags['surface']);
+  const bike = tags['surface_bike'];
+  if (bike) {
+    const b = classifySurfaceValue(bike);
+    if (b.recognized) base = b;
+    else base = { cls: base.cls, recognized: false };
+  }
   if (base.cls === 'PAVE' && (tags['smoothness'] === 'excellent' || tags['smoothness'] === 'good')) {
     return { cls: 'SLABS', recognized: base.recognized };
   }
   return base;
+}
+
+export type Direction = 'forward' | 'backward';
+
+/**
+ * Effective surface for one travel direction (§6.2): with right-hand traffic, a cycle lane on the
+ * `right` serves the way's direction and one on the `left` the reverse; its own surface tag wins.
+ */
+export function effectiveSurface(tags: Tags, dir: Direction): SurfaceResult {
+  const side = dir === 'forward' ? 'right' : 'left';
+  const lane = tags[`cycleway:${side}:surface`] ?? tags['cycleway:both:surface'] ?? tags['cycleway:surface'];
+  if (lane) {
+    const r = classifySurfaceValue(lane);
+    if (r.recognized && r.cls !== 'UNKNOWN') return r;
+  }
+  return classifyWaySurface(tags);
+}
+
+/** Rails known from the street's own tags (§6.3 rule 1, plus `surface_bike=milanese_paving:rails`, decision 4). */
+export function hasTaggedRails(tags: Tags): boolean {
+  const e = tags['embedded_rails'];
+  if (e === 'tram' || e === 'yes') return true;
+  return (tags['surface_bike'] ?? '').endsWith(':rails');
 }
 
 export type BikeMode = 'ride' | 'push' | 'excluded';
@@ -51,8 +104,10 @@ const RIDEABLE = new Set([
   'cycleway', 'track', 'path', 'pedestrian',
 ]);
 const BIKE_ALLOWED = new Set(['yes', 'designated', 'permissive']);
+/** Roads above tertiary: riding or pushing against a oneway is not allowed. */
+const ABOVE_TERTIARY = new Set(['motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary', 'primary_link', 'secondary', 'secondary_link']);
 
-/** Direction-independent bike access (§6.1). Oneway and contraflow handling belongs to the graph builder. */
+/** Direction-independent bike access (§6.1). */
 export function bikeAccess(tags: Tags): BikeMode {
   const hw = tags['highway'];
   if (!hw || hw === 'steps' || hw === 'construction' || hw === 'proposed') return 'excluded';
@@ -67,6 +122,49 @@ export function bikeAccess(tags: Tags): BikeMode {
   }
   if (RIDEABLE.has(hw)) return tags['bicycle'] === 'dismount' ? 'push' : 'ride';
   return 'excluded';
+}
+
+/** 1: oneway along the way, -1: against it, 0: two-way (for bikes). */
+export function onewayForBikes(tags: Tags): 1 | -1 | 0 {
+  const bike = tags['oneway:bicycle'];
+  if (bike === 'no') return 0;
+  const v = bike ?? tags['oneway'];
+  if (v === 'yes' || v === '1' || v === 'true') return 1;
+  if (v === '-1' || v === 'reverse') return -1;
+  if (v === 'no' || v === 'false' || v === '0') return 0;
+  if (tags['junction'] === 'roundabout' || tags['junction'] === 'circular') return 1;
+  return 0;
+}
+
+const OPPOSITE_KEYS = ['cycleway', 'cycleway:left', 'cycleway:right', 'cycleway:both'];
+
+/** Contraflow cycling explicitly allowed (`cycleway*=opposite*` or a contraflow lane). */
+export function contraflowAllowed(tags: Tags): boolean {
+  for (const k of OPPOSITE_KEYS) {
+    if ((tags[k] ?? '').startsWith('opposite')) return true;
+    const ow = tags[`${k}:oneway`];
+    if (k !== 'cycleway' && (ow === '-1' || ow === 'no')) return true;
+  }
+  return false;
+}
+
+export interface DirectionalAccess {
+  forward: BikeMode;
+  backward: BikeMode;
+}
+
+/**
+ * Access per direction (§6.1): against a oneway, riding is allowed with `oneway:bicycle=no` or an
+ * opposite cycle lane; otherwise pushing on roads up to tertiary, nothing above.
+ * Pushing ignores oneways (a pedestrian may walk both ways).
+ */
+export function directionalAccess(tags: Tags): DirectionalAccess {
+  const base = bikeAccess(tags);
+  if (base !== 'ride') return { forward: base, backward: base };
+  const ow = onewayForBikes(tags);
+  if (ow === 0) return { forward: 'ride', backward: 'ride' };
+  const contra: BikeMode = contraflowAllowed(tags) ? 'ride' : ABOVE_TERTIARY.has(tags['highway'] ?? '') ? 'excluded' : 'push';
+  return ow === 1 ? { forward: 'ride', backward: contra } : { forward: contra, backward: 'ride' };
 }
 
 /** Audit grouping of highway values. */

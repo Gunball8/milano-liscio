@@ -3,3 +3,6 @@ dist/
 data/raw/
 docs/*.data.js
 .DS_Store
+public/data/
+out/
+docs/calibration-map.data.js

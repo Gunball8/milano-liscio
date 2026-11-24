@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MILAN_PROJECTION as P } from '../src/core/geo.ts';
-import { RailIndex, isRailMarked, railLength, sampleEdgeRails } from '../scripts/lib/rails.ts';
+import { RailIndex, countShallowCrossings, isRailMarked, railLength, sampleEdgeRails } from '../scripts/lib/rails.ts';
 
 /** A straight east-west line at a given northward offset (m) from the Duomo, `length` meters long. */
 const line = (offsetY: number, length: number, angleDeg = 0): [number, number][] => {
@@ -48,5 +48,28 @@ describe('spatial rail detection (SPEC §6.3)', () => {
     expect(isRailMarked(20, 60)).toBe(true);
     expect(isRailMarked(20, 100)).toBe(false);
     expect(isRailMarked(0, 5)).toBe(false);
+  });
+});
+
+describe('shallow crossings (SPEC §6.3.4)', () => {
+  const road = xyOf(line(0, 100));
+  const crossing = (angle: number) => {
+    // rail through the road midpoint (50, 0) at the given angle
+    const a = (angle * Math.PI) / 180;
+    const c: [number, number][] = [
+      [P.lon(50 - 30 * Math.cos(a)), P.lat(-30 * Math.sin(a))],
+      [P.lon(50 + 30 * Math.cos(a)), P.lat(30 * Math.sin(a))],
+    ];
+    return new RailIndex([{ coords: c, layer: 0 }], 0);
+  };
+  it('counts crossings between 10° and 45°, not steep or near-parallel ones', () => {
+    expect(countShallowCrossings(road, crossing(30), 0)).toBe(1);
+    expect(countShallowCrossings(road, crossing(60), 0)).toBe(0);
+    expect(countShallowCrossings(road, crossing(90), 0)).toBe(0);
+    expect(countShallowCrossings(road, crossing(5), 0)).toBe(0);
+  });
+  it('ignores rails on another layer', () => {
+    const idx = new RailIndex([{ coords: [[P.lon(40), P.lat(-10)], [P.lon(60), P.lat(10)]], layer: 1 }], 0);
+    expect(countShallowCrossings(road, idx, 0)).toBe(0);
   });
 });

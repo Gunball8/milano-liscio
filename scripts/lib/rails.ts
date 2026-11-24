@@ -8,6 +8,11 @@ export const SAMPLE_STEP_M = 10;
 export const MAX_ANGLE_DEG = 20;
 export const MARK_MIN_M = 30;
 export const MARK_MIN_SHARE = 0.3;
+/** Calibrated in phase 0 (docs/audit-notes.md, decision 1). */
+export const RAIL_D_M = 3;
+/** Shallow crossing window (§6.3.4: < 45°). Below the minimum, the "crossing" is a rail drawn along the street. */
+export const CROSSING_MAX_DEG = 45;
+export const CROSSING_MIN_DEG = 10;
 
 export interface RailInput {
   /** Geographic coordinates [lon, lat] of the rail way. */
@@ -19,6 +24,8 @@ export interface RailInput {
 export class RailIndex {
   readonly seg: Float64Array;
   readonly layer: Int8Array;
+  /** Index of the input rail each segment belongs to. */
+  readonly segRail: Int32Array;
   private readonly cells = new Map<number, number[]>();
 
   constructor(
@@ -28,16 +35,19 @@ export class RailIndex {
   ) {
     const segs: number[] = [];
     const layers: number[] = [];
-    for (const r of rails) {
+    const owners: number[] = [];
+    rails.forEach((r, ri) => {
       for (let i = 1; i < r.coords.length; i++) {
         const [lon1, lat1] = r.coords[i - 1]!;
         const [lon2, lat2] = r.coords[i]!;
         segs.push(P.x(lon1), P.y(lat1), P.x(lon2), P.y(lat2));
         layers.push(r.layer);
+        owners.push(ri);
       }
-    }
+    });
     this.seg = Float64Array.from(segs);
     this.layer = Int8Array.from(layers);
+    this.segRail = Int32Array.from(owners);
     const nSeg = layers.length;
     for (let s = 0; s < nSeg; s++) {
       const x1 = this.seg[4 * s]!;
@@ -61,6 +71,22 @@ export class RailIndex {
 
   get segmentCount(): number {
     return this.layer.length;
+  }
+
+  /** Segments registered in any cell overlapping the box. */
+  candidatesInBox(minX: number, minY: number, maxX: number, maxY: number): Set<number> {
+    const out = new Set<number>();
+    const c0 = Math.floor(minX / this.cellMeters);
+    const c1 = Math.floor(maxX / this.cellMeters);
+    const r0 = Math.floor(minY / this.cellMeters);
+    const r1 = Math.floor(maxY / this.cellMeters);
+    for (let c = c0; c <= c1; c++) {
+      for (let r = r0; r <= r1; r++) {
+        const list = this.cells.get(c * 100_000 + r);
+        if (list) for (const s of list) out.add(s);
+      }
+    }
+    return out;
   }
 
   candidates(x: number, y: number): number[] {
@@ -134,4 +160,37 @@ export function isRailMarked(railLen: number, edgeLength: number): boolean {
 export function parseLayer(v: string | undefined): number {
   const n = Number.parseInt(v ?? '0', 10);
   return Number.isFinite(n) ? Math.max(-5, Math.min(5, n)) : 0;
+}
+
+/**
+ * Number of distinct rails the polyline crosses at an angle within [CROSSING_MIN_DEG, CROSSING_MAX_DEG)
+ * (SPEC §6.3.4). Steep crossings are not penalized; near-parallel intersections are rails drawn along the street.
+ */
+export function countShallowCrossings(xy: Float64Array, index: RailIndex, layer: number): number {
+  const crossed = new Set<number>();
+  const n = xy.length / 2;
+  for (let i = 1; i < n; i++) {
+    const ax = xy[2 * i - 2]!;
+    const ay = xy[2 * i - 1]!;
+    const bx = xy[2 * i]!;
+    const by = xy[2 * i + 1]!;
+    const rx = bx - ax;
+    const ry = by - ay;
+    for (const s of index.candidatesInBox(Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by))) {
+      if (index.layer[s] !== layer) continue;
+      const cx = index.seg[4 * s]!;
+      const cy = index.seg[4 * s + 1]!;
+      const sx = index.seg[4 * s + 2]! - cx;
+      const sy = index.seg[4 * s + 3]! - cy;
+      const d = rx * sy - ry * sx;
+      if (Math.abs(d) < 1e-9) continue;
+      const t = ((cx - ax) * sy - (cy - ay) * sx) / d;
+      const u = ((cx - ax) * ry - (cy - ay) * rx) / d;
+      // half-open on the street segment so a crossing at a shared vertex counts once
+      if (t < 0 || t >= 1 || u < 0 || u > 1) continue;
+      const angle = lineAngleDiff(rx, ry, sx, sy);
+      if (angle >= CROSSING_MIN_DEG && angle < CROSSING_MAX_DEG) crossed.add(index.segRail[s]!);
+    }
+  }
+  return crossed.size;
 }

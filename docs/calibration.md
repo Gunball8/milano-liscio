@@ -1,0 +1,125 @@
+# Calibrage des pénalités (phase 1)
+
+Généré par `pnpm calibrate` le 2026-11-24 15:05 UTC, graphe du 2026-11-23 (D = 3 m). Pénalités de départ du §7. Carte : `docs/calibration-map.html`. Ne pas éditer à la main : les commentaires vont dans `docs/calibration-notes.md`, inséré ci-dessous.
+
+## Lecture et décisions proposées (phase 1)
+
+Rédigé le 2026-11-24. Les points marqués **à valider** attendent ta réponse avant la phase 2.
+
+### Les cinq paires en un tableau
+
+Mètres de pavé et détour par rapport au niveau Court.
+
+| Paire | Court | Équilibré | Lisse | Zéro pavé |
+| --- | ---: | ---: | ---: | ---: |
+| 1. Duomo → Darsena | 878 m | 196 m (+28 %) | 44 m (+62 %) | 2 m (+72 %) |
+| 2. Castello → Porta Venezia | 919 m | 67 m (+19 %) | 74 m (+28 %) | 0 m (+51 %) |
+| 3. Centrale → Bocconi | 804 m | 55 m (+1 %) | 55 m (+1 %) | 0 m (+20 %) |
+| 4. Medaglie d'Oro → Sant'Ambrogio | 1 180 m | 338 m (+8 %) | 118 m (+22 %) | 66 m (+39 %) |
+| 5. Lambrate → Leonardo da Vinci (témoin) | 0 m | 0 m (0 %) | 0 m (−1 %) | 0 m (−1 %) |
+
+- **Lisse** retire 90 à 95 % du pavé, pour un détour de +1 % à +62 %. Les paires qui traversent le centre historique (1 et 2) paient le plus : le cœur de la ville est dense en pavé, le contournement passe par la cerchia dei Navigli.
+- **Équilibré** laisse nettement plus de pavé que Lisse sur les paires 1 et 4 (196 m contre 44, 338 m contre 118), pour un détour environ deux fois moindre. Sur la paire 2, il en laisse même un peu moins que Lisse (67 m contre 74) parce qu'il l'échange contre 1,06 km de dalles, peu pénalisées à ce niveau ; Lisse, qui pénalise davantage les dalles, préfère 74 m de pavé.
+- **Zéro pavé** coûte +20 % à +72 % et pousse le vélo jusqu'à 154 m pour éviter les derniers mètres.
+- **Témoin** : aucun pavé à aucun niveau, comme attendu. Lisse et Zéro pavé y sont 22 m plus courts que Court : ils évitent 97 m le long des rails (157 → 60 m) en poussant 73 m de plus. Court minimise une distance où chaque mètre à pied compte 3,5 fois, donc il préfère rouler 22 m de plus.
+
+### Décision 1 : garder les pénalités de départ (à valider)
+
+Les valeurs du §7 produisent des écarts nets et ordonnés entre niveaux. Je propose de les garder telles quelles et de les juger à l'usage (recette de la phase 6) plutôt que de les retoucher sur cinq trajets. Si Lisse te paraît trop détourné au centre, le levier est la pénalité `PAVE` du niveau 2 (4 → 3).
+
+### Décision 2 : croisements obliques entre 10° et 45° (à valider)
+
+Le brief pénalise les croisements de rails à moins de 45°. J'ai ajouté un plancher à 10° : en dessous, ce n'est pas un croisement mais un rail dessiné le long de la rue qui recoupe son axe. Ces cas sont déjà pénalisés par `railLen`, et sans le plancher ils seraient comptés deux fois. Résultat : 994 croisements obliques dans le graphe.
+
+### Décision 3 : alléger le graphe en phase 2 (à valider)
+
+Le fichier fait 16,9 Mo (8,3 Mo compressé au téléchargement), au-dessus de l'ordre de 10 Mo du brief mais sous le seuil d'alerte de 30 Mo. Les coordonnées pèsent 5,2 Mo, dont 3,1 Mo répètent les extrémités de tronçon déjà stockées dans les nœuds. Je propose de les retirer quand je brancherai le téléchargement (phase 2), ce qui ramène le fichier vers 14 Mo.
+
+### Invariant du §12 sur la distance
+
+« distance(niveau 3) ≥ distance(niveau 0) » n'est pas garanti dès que le vélo est poussé, pour la raison vue sur le témoin. Le test vérifie donc la forme exacte : le trajet du niveau 3, évalué avec le coût du niveau 0, n'est jamais moins cher que celui du niveau 0. Il exige en plus que toute exception sur la distance brute s'explique par davantage de marche. Sur 200 paires aléatoires : 3 exceptions, toutes expliquées par la marche ; aucune paire où le niveau 3 aurait plus de pavé que le niveau 0.
+
+### Autres constats
+
+- Graphe : 152 013 nœuds, 377 806 arcs, construit en 1,7 s. La plus grande composante garde 6 657 km sur 6 954 ; les 297 km écartés sont 3 211 petits morceaux isolés (allées, cours privées).
+- Rails : 67,6 km de tronçons marqués, dont 3,1 km par le tag local `surface_bike=*:rails`.
+- Temps : 2 ms par requête complète (accrochage + trois calculs) sur ce Mac, chargement du graphe et des index en 57 ms. Le budget iPhone de 500 ms laisse une large marge, à mesurer en phase 3.
+- Noms des lieux : OSM écrit « Piazza Ventiquattro Maggio », « Piazzale Medaglie d'Oro », « Milano Centrale », et la basilique Sant'Ambrogio n'existe que comme relation (la place devant sert de point d'arrivée). La recherche de la phase 3 devra gérer les chiffres romains, les alias de gares et les lieux décrits par une relation.
+
+## 1. Piazza del Duomo → Darsena (Piazza XXIV Maggio)
+
+Départ : Piazza del Duomo (square, way/463529462) · arrivée : Piazza Ventiquattro Maggio (rue, way/352969044).
+
+Accrochage : départ à 51 m, arrivée à 0 m.
+
+| Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | 1.86 km | – | 7 min | 878 m | 200 m | 272 m | 4 | 5 m |
+| 1 Équilibré | 2.39 km | +529 m (+28.4 %) | 10 min | 196 m | 171 m | 77 m | 6 | 2 m |
+| 2 Lisse | 3.01 km | +1152 m (+61.9 %) | 12 min | 44 m | 190 m | 17 m | 0 | 0 m |
+| 3 Zéro pavé | 3.20 km | +1342 m (+72.1 %) | 14 min | 2 m | 169 m | 0 m | 0 | 101 m |
+
+## 2. Piazza Castello → Porta Venezia
+
+Départ : Piazza Castello (square, way/728204530) · arrivée : Porta Venezia (attraction, way/27596330).
+
+Accrochage : départ à 28 m, arrivée à 12 m.
+
+| Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | 2.47 km | – | 10 min | 919 m | 191 m | 51 m | 3 | 0 m |
+| 1 Équilibré | 2.95 km | +474 m (+19.2 %) | 12 min | 67 m | 1.06 km | 3 m | 0 | 2 m |
+| 2 Lisse | 3.16 km | +688 m (+27.8 %) | 13 min | 74 m | 315 m | 8 m | 1 | 72 m |
+| 3 Zéro pavé | 3.73 km | +1256 m (+50.8 %) | 16 min | 0 m | 34 m | 0 m | 0 | 154 m |
+
+## 3. Stazione Centrale → Università Bocconi (Via Sarfatti)
+
+Départ : Milano Centrale (gare, node/6067258870) · arrivée : Via Roberto Sarfatti (rue, way/264776940).
+
+Accrochage : départ à 89 m, arrivée à 0 m.
+
+| Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | 5.02 km | – | 20 min | 804 m | 316 m | 416 m | 4 | 0 m |
+| 1 Équilibré | 5.09 km | +70 m (+1.4 %) | 20 min | 55 m | 273 m | 0 m | 0 | 0 m |
+| 2 Lisse | 5.09 km | +70 m (+1.4 %) | 20 min | 55 m | 273 m | 0 m | 0 | 0 m |
+| 3 Zéro pavé | 6.04 km | +1021 m (+20.4 %) | 24 min | 0 m | 131 m | 15 m | 0 | 0 m |
+
+## 4. Piazza Medaglie d'Oro → Basilica di Sant'Ambrogio
+
+Départ : Piazzale Medaglie d'Oro (rue, way/36908808) · arrivée : Piazza Sant'Ambrogio (rue, way/359195624).
+
+Accrochage : départ à 0 m, arrivée à 0 m.
+
+| Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | 3.01 km | – | 12 min | 1.18 km | 229 m | 867 m | 8 | 38 m |
+| 1 Équilibré | 3.25 km | +239 m (+7.9 %) | 13 min | 338 m | 216 m | 33 m | 6 | 38 m |
+| 2 Lisse | 3.67 km | +659 m (+21.9 %) | 15 min | 118 m | 194 m | 18 m | 0 | 58 m |
+| 3 Zéro pavé | 4.17 km | +1160 m (+38.5 %) | 18 min | 66 m | 194 m | 0 m | 0 | 100 m |
+
+## 5. Stazione Lambrate → Piazza Leonardo da Vinci (témoin)
+
+Départ : Milano Lambrate (gare, node/169701311) · arrivée : Piazza Leonardo da Vinci (rue, way/439105625).
+
+Accrochage : départ à 17 m, arrivée à 0 m.
+
+| Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | 2.15 km | – | 9 min | 0 m | 0 m | 157 m | 4 | 5 m |
+| 1 Équilibré | 2.15 km | +0 m (+0.0 %) | 9 min | 0 m | 0 m | 111 m | 3 | 20 m |
+| 2 Lisse | 2.13 km | -22 m (-1.0 %) | 9 min | 0 m | 0 m | 60 m | 2 | 78 m |
+| 3 Zéro pavé | 2.13 km | -22 m (-1.0 %) | 9 min | 0 m | 0 m | 60 m | 2 | 78 m |
+
+## Temps de calcul
+
+Requête complète (niveaux 0, 2 et 3, accrochage compris) sur cet ordinateur : 3 ms en moyenne, 4 ms au pire. Budget iPhone : 500 ms.
+
+## Pénalités utilisées
+
+| Niveau | PAVE | SLABS | LOOSE | UNKNOWN | rails ∥ | croisement oblique |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 Court | +0 | +0 | +0 | +0 | +0 | 0 m |
+| 1 Équilibré | +1.5 | +0.3 | +0.5 | +0.05 | +1 | 10 m |
+| 2 Lisse | +4 | +0.8 | +0.5 | +0.05 | +3 | 25 m |
+| 3 Zéro pavé | +30 | +3 | +0.5 | +0.05 | +15 | 60 m |
