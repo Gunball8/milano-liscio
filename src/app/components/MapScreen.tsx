@@ -7,12 +7,14 @@ import { MapView } from './MapView.tsx';
 import { RoutePanel } from './RoutePanel.tsx';
 import { SearchPanel } from './SearchPanel.tsx';
 import { SearchSheet } from './SearchSheet.tsx';
+import { TrackingOverlay } from './TrackingOverlay.tsx';
 
 /** Map screen (SPEC §9.1). */
 export function MapScreen() {
   const sheet = useApp((s) => s.sheet);
   const searchField = useApp((s) => s.searchField);
   const version = useApp((s) => s.installed?.version);
+  const mode = useApp((s) => s.mode);
 
   useEffect(() => {
     void loadPreferences();
@@ -24,10 +26,16 @@ export function MapScreen() {
   return (
     <>
       <MapView />
-      <SearchPanel />
-      <RoutePanel />
-      <ContextMenu />
-      {searchField && <SearchSheet />}
+      {mode === 'tracking' ? (
+        <TrackingOverlay />
+      ) : (
+        <>
+          <SearchPanel />
+          <RoutePanel />
+          <ContextMenu />
+          {searchField && <SearchSheet />}
+        </>
+      )}
       {sheet === 'data' && <DataSheet />}
     </>
   );

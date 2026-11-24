@@ -5,6 +5,7 @@ import { registerArchive } from '../map/pmtiles.ts';
 import { ALT_HIT_LAYER, addRouteLayers, keepRouteLayers, routeData, setRouteData } from '../map/routeLayers.ts';
 import { PMTILES_NAME, buildStyle } from '../map/style.ts';
 import { openMenu, selectAlternative } from '../routing/actions.ts';
+import { setFollowing } from '../tracking/session.ts';
 import { type AppState, useApp } from '../store.ts';
 import { type Scheme, useColorScheme } from '../useColorScheme.ts';
 
@@ -16,6 +17,7 @@ function pointsOf(s: AppState) {
   const at = (e: AppState['from'] | null) =>
     e?.kind === 'place' && e.lon !== undefined && e.lat !== undefined ? ([e.lon, e.lat] as [number, number]) : null;
   const me = s.position ? ([s.position.lon, s.position.lat] as [number, number]) : null;
+  if (s.mode === 'tracking') return { from: null, to: at(s.to), me };
   return { from: at(s.from) ?? (s.from.kind === 'position' && s.routes ? me : null), to: at(s.to), me };
 }
 
@@ -36,6 +38,19 @@ function fitRoutes(map: MapLibreMap) {
   map.fitBounds(b as LngLatBoundsLike, { padding: { top: 170, bottom: panelHeight() + 30, left: 40, right: 40 }, maxZoom: 16, duration: 400 });
 }
 
+/** While tracking: keep the position in the lower part of the screen, rotated to the course (SPEC §9.2). */
+function follow(map: MapLibreMap) {
+  const s = useApp.getState();
+  if (s.mode !== 'tracking' || !s.tracking?.following || !s.position) return;
+  map.easeTo({
+    center: [s.position.lon, s.position.lat],
+    bearing: s.tracking.bearing,
+    zoom: Math.max(map.getZoom(), 16.5),
+    padding: { top: 260, bottom: 140, left: 0, right: 0 },
+    duration: 700,
+  });
+}
+
 function installLongPress(map: MapLibreMap) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let start: { x: number; y: number } | null = null;
@@ -45,7 +60,7 @@ function installLongPress(map: MapLibreMap) {
     start = null;
   };
   map.on('touchstart', (e) => {
-    if (e.originalEvent.touches.length !== 1) return cancel();
+    if (e.originalEvent.touches.length !== 1 || useApp.getState().mode === 'tracking') return cancel();
     start = { x: e.point.x, y: e.point.y };
     const { lng, lat } = e.lngLat;
     const { x, y } = e.point;
@@ -65,6 +80,7 @@ function installLongPress(map: MapLibreMap) {
   map.on('contextmenu', (e) => {
     e.preventDefault();
     cancel();
+    if (useApp.getState().mode === 'tracking') return;
     void openMenu(e.lngLat.lng, e.lngLat.lat, e.point.x, e.point.y);
   });
 }
@@ -119,6 +135,10 @@ export function MapView() {
         m.on('mouseenter', ALT_HIT_LAYER, () => (m.getCanvas().style.cursor = 'pointer'));
         m.on('mouseleave', ALT_HIT_LAYER, () => (m.getCanvas().style.cursor = ''));
         installLongPress(m);
+        // A pan by the user while tracking stops the follow mode until "Recentrer".
+        m.on('dragstart', (ev) => {
+          if ((ev as { originalEvent?: unknown }).originalEvent && useApp.getState().mode === 'tracking') setFollowing(false);
+        });
         mapRef.current = m;
         (globalThis as unknown as { __map?: MapLibreMap }).__map = m;
       } catch (err) {
@@ -138,7 +158,17 @@ export function MapView() {
       useApp.subscribe((s, prev) => {
         const m = mapRef.current;
         if (!m || !m.getSource('liscio-route')) return;
-        if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.position !== prev.position) pushRoute(m);
+        if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.position !== prev.position || s.mode !== prev.mode) pushRoute(m);
+        if (s.mode === 'tracking') {
+          const followChanged = s.tracking?.following !== prev.tracking?.following;
+          const turned = s.tracking?.bearing !== prev.tracking?.bearing;
+          if (s.position !== prev.position || prev.mode !== 'tracking' || followChanged || turned) follow(m);
+          return;
+        }
+        if (prev.mode === 'tracking') {
+          m.easeTo({ bearing: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 400 });
+          return;
+        }
         // wait for the route panel to take its final height before framing the route
         if (s.routes !== prev.routes) setTimeout(() => fitRoutes(m), 80);
       }),

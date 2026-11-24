@@ -48,3 +48,7 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Routing runs in `src/worker/router.worker.ts` (graph + geocoder from the data cache); the UI talks to it through `src/app/routing/client.ts` (typed messages in `src/worker/protocol.ts`).
 - Long press: our own 550 ms timer (iOS fires no contextmenu on touch) plus MapLibre's `contextmenu` (desktop right click, Chromium long touch). The menu backdrop closes on pointerdown, not click, or releasing the press would close it.
 - Real-touch long press is only testable in Chromium (CDP); check it on the iPhone during phase 6.
+- Tracking (phase 4): pure logic in `src/core/tracking.ts` (RouteTracker, OffRouteDetector, courseFrom) and `src/core/screenLock.ts` (wake lock with injected API, unit tested); browser side in `src/app/tracking/session.ts`.
+- Fix times come from `Date.now()` at reception: position timestamps are in microseconds in Playwright's WebKit. Emulated fixes carry no heading or speed, so the course is derived from successive fixes.
+- Position and course are published in one store update; otherwise the map follows a new position with the previous bearing.
+- Not testable headless: wake lock (denied in test browsers) and resume after lock screen; both are on the phase 6 checklist.

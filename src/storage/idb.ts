@@ -21,12 +21,23 @@ export interface Recent {
   usedAt: number;
 }
 
+/** "Signaler" button while riding (SPEC §9.2): position, heading and time, to sort later. */
+export interface Report {
+  id: string;
+  lon: number;
+  lat: number;
+  heading: number | null;
+  accuracy: number | null;
+  at: number;
+  status: 'todo' | 'done';
+}
+
 interface LiscioDB extends DBSchema {
   favorites: { key: string; value: Favorite };
   recents: { key: string; value: Recent };
   settings: { key: string; value: unknown };
   corrections: { key: string; value: { id: string } & Record<string, unknown> };
-  reports: { key: string; value: { id: string } & Record<string, unknown> };
+  reports: { key: string; value: Report };
 }
 
 const MAX_RECENTS = 12;
@@ -84,4 +95,14 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function setSetting(key: string, value: unknown): Promise<void> {
   await (await db()).put('settings', value, key);
+}
+
+export async function addReport(r: Omit<Report, 'id' | 'status'>): Promise<Report> {
+  const report: Report = { ...r, id: newId(), status: 'todo' };
+  await (await db()).put('reports', report);
+  return report;
+}
+
+export async function listReports(): Promise<Report[]> {
+  return (await (await db()).getAll('reports')).sort((a, b) => b.at - a.at);
 }

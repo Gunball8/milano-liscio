@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { clearRoute, computeRoute, selectAlternative } from '../routing/actions.ts';
+import { startTracking } from '../tracking/session.ts';
 import { useApp } from '../store.ts';
 import { LevelSelector } from './LevelSelector.tsx';
 
@@ -103,6 +104,9 @@ export function RoutePanel() {
               </button>
             ))}
           </div>
+          <button type="button" className="button start" onClick={() => void startTracking()}>
+            Démarrer
+          </button>
         </>
       )}
     </section>

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { DataManifest, Progress } from '../storage/dataCache.ts';
+import type { LockState } from '../core/screenLock.ts';
+import type { NextStretch } from '../core/tracking.ts';
 import type { Favorite } from '../storage/idb.ts';
 import type { RouteView } from '../worker/protocol.ts';
 
@@ -14,6 +16,28 @@ export interface Endpoint {
 }
 
 export const MY_POSITION: Endpoint = { kind: 'position', label: 'Ma position' };
+
+/** Live guidance state (SPEC §9.2). */
+export interface TrackingState {
+  remainingM: number;
+  remainingS: number;
+  etaMs: number;
+  next: NextStretch | null;
+  offset: number;
+  accuracy: number | null;
+  /** Last fix less precise than 30 m: shown, no off-route decision. */
+  imprecise: boolean;
+  recalculating: boolean;
+  recalcs: number;
+  arrived: boolean;
+  lock: LockState;
+  /** Map follows the position (off after the user pans). */
+  following: boolean;
+  /** Map bearing, from the course when faster than 2 m/s. */
+  bearing: number;
+  reports: number;
+  error: string | null;
+}
 
 export type Phase = 'boot' | 'install' | 'offer' | 'downloading' | 'ready' | 'error';
 
@@ -48,6 +72,10 @@ export interface AppState {
   favorites: Favorite[];
   position: { lon: number; lat: number; accuracy: number } | null;
   menu: { lon: number; lat: number; x: number; y: number; street: string | null } | null;
+
+  // ---- tracking (phase 4)
+  mode: 'map' | 'tracking';
+  tracking: TrackingState | null;
 }
 
 export const useApp = create<AppState>(() => ({
@@ -73,6 +101,8 @@ export const useApp = create<AppState>(() => ({
   favorites: [],
   position: null,
   menu: null,
+  mode: 'map',
+  tracking: null,
 }));
 
 // Exposed for end-to-end tests and debugging from the console.
