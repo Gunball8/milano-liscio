@@ -14,7 +14,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import type { Tags } from '../../src/core/classify.ts';
-import type { Bbox, LatLon, OsmNode, OsmWay } from './osm.ts';
+import type { Bbox, LatLon, OsmNode, OsmRelation, OsmWay } from './osm.ts';
 import { FETCH_LOG, type FetchLogEntry, RAW_DIR } from './overpass.ts';
 
 const run = promisify(execFile);
@@ -73,18 +73,18 @@ interface Buckets {
   rails: OsmWay[];
   nodes: OsmNode[];
   addresses: (OsmNode | OsmWay)[];
-  pois: (OsmNode | OsmWay)[];
+  pois: (OsmNode | OsmWay | OsmRelation)[];
 }
 
 /** Named places for the geocoder (SPEC §6.4): stations, universities, squares, museums, parks, hospitals, churches. */
 const POI_FILTERS = [
-  'nw/railway=station',
-  'nw/public_transport=station',
-  'nw/amenity=university,college,hospital,place_of_worship',
-  'nw/tourism=museum',
-  'nw/leisure=park',
-  'nw/place=square',
-  'nw/historic=city_gate',
+  'nwr/railway=station',
+  'nwr/public_transport=station',
+  'nwr/amenity=university,college,hospital,place_of_worship',
+  'nwr/tourism=museum',
+  'nwr/leisure=park',
+  'nwr/place=square',
+  'nwr/historic=city_gate',
 ];
 function isPoi(t: Tags): boolean {
   if (!t['name']) return false;
@@ -133,6 +133,9 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
   await osmium(['add-locations-to-ways', '--overwrite', '-f', 'opl', '-o', opl, filtered]);
 
   const buckets: Buckets = { highways: [], rails: [], nodes: [], addresses: [], pois: [] };
+  // Centres of every way (tagged or not), to place relation POIs (multipolygons) at their outer ways.
+  const wayCentre = new Map<number, [number, number, number]>();
+  const poiRelations: { id: number; timestamp?: string; tags: Tags; ways: number[] }[] = [];
   const rl = createInterface({ input: createReadStream(opl), crlfDelay: Infinity });
   for await (const line of rl) {
     if (line.length === 0) continue;
@@ -145,6 +148,7 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
     let lon = NaN;
     let lat = NaN;
     let nodeField = '';
+    let memberField = '';
     for (const f of fields.slice(1)) {
       const k = f[0];
       const v = f.slice(1);
@@ -154,8 +158,33 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
       else if (k === 'x') lon = Number(v);
       else if (k === 'y') lat = Number(v);
       else if (k === 'N') nodeField = v;
+      else if (k === 'M') memberField = v;
+    }
+    if (kind === 'w' && nodeField) {
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (const ref of nodeField.split(',')) {
+        const xi = ref.indexOf('x');
+        const yi = ref.indexOf('y');
+        if (xi < 0 || yi < 0) continue;
+        sx += Number(ref.slice(xi + 1, yi));
+        sy += Number(ref.slice(yi + 1));
+        n++;
+      }
+      if (n > 0) wayCentre.set(id, [sx, sy, n]);
     }
     if (!tags) continue;
+    if (kind === 'r') {
+      if (isPoi(tags) && memberField) {
+        const ways = memberField
+          .split(',')
+          .filter((m) => m.startsWith('w') && (m.endsWith('@outer') || m.endsWith('@')))
+          .map((m) => Number(m.slice(1, m.indexOf('@'))));
+        poiRelations.push({ id, timestamp, tags, ways });
+      }
+      continue;
+    }
 
     if (kind === 'n') {
       const node: OsmNode = { type: 'node', id, lat, lon, timestamp, tags };
@@ -187,6 +216,20 @@ export async function buildFromExtract(bbox: Bbox): Promise<void> {
       if (tags['addr:housenumber']) buckets.addresses.push({ type: 'way', id, timestamp, nodes: [], center, tags });
       if (isPoi(tags)) buckets.pois.push({ type: 'way', id, timestamp, nodes: [], center, tags });
     }
+  }
+
+  for (const r of poiRelations) {
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const w of r.ways) {
+      const c = wayCentre.get(w);
+      if (!c) continue;
+      sx += c[0];
+      sy += c[1];
+      n += c[2];
+    }
+    if (n > 0) buckets.pois.push({ type: 'relation', id: r.id, timestamp: r.timestamp, center: { lon: sx / n, lat: sy / n }, tags: r.tags });
   }
 
   const source = `download.geofabrik.de (${path.basename(EXTRACT_URL)})`;

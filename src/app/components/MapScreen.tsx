@@ -1,22 +1,33 @@
+import { useEffect } from 'react';
+import { initEngine, loadPreferences } from '../routing/actions.ts';
 import { useApp } from '../store.ts';
+import { ContextMenu } from './ContextMenu.tsx';
 import { DataSheet } from './DataSheet.tsx';
 import { MapView } from './MapView.tsx';
+import { RoutePanel } from './RoutePanel.tsx';
+import { SearchPanel } from './SearchPanel.tsx';
+import { SearchSheet } from './SearchSheet.tsx';
 
+/** Map screen (SPEC §9.1). */
 export function MapScreen() {
   const sheet = useApp((s) => s.sheet);
-  const remote = useApp((s) => s.remote);
-  const installed = useApp((s) => s.installed);
-  const updateAvailable = !!remote && !!installed && remote.version !== installed.version;
+  const searchField = useApp((s) => s.searchField);
+  const version = useApp((s) => s.installed?.version);
+
+  useEffect(() => {
+    void loadPreferences();
+  }, []);
+  useEffect(() => {
+    if (version) void initEngine(version);
+  }, [version]);
+
   return (
     <>
       <MapView />
-      <header className="topbar">
-        <span className="brand">Milano Liscio</span>
-        <button type="button" className="chip" onClick={() => useApp.setState({ sheet: 'data' })}>
-          Données
-          {updateAvailable && <span className="dot" aria-label="mise à jour disponible" />}
-        </button>
-      </header>
+      <SearchPanel />
+      <RoutePanel />
+      <ContextMenu />
+      {searchField && <SearchSheet />}
       {sheet === 'data' && <DataSheet />}
     </>
   );

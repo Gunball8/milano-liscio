@@ -25,6 +25,7 @@ pnpm data:graph      # phase 1: build public/data/milano-graph.bin
 pnpm data:build      # fetch + graph
 pnpm route "45.4642,9.19" "45.452,9.177" --level 2   # CLI router, writes out/route.geojson
 pnpm calibrate       # phase 1: docs/calibration.md + docs/calibration-map.html data
+pnpm data:geocoder   # phase 3: public/data/milano-geocoder.bin (streets, house numbers, places)
 pnpm data:basemap    # phase 2: public/data/milano.pmtiles + local fonts/sprites (needs `brew install pmtiles`)
 pnpm data:manifest   # phase 2: public/data/manifest.json (version, sizes, SHA-256)
 pnpm dev             # app on localhost (no service worker in dev)
@@ -44,3 +45,6 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - PMTiles are read from a Blob through `FileSource` (key = file name `milano.pmtiles`), never via HTTP range requests.
 - Graph format v2: edge geometry stores interior points only; use `edgeLngLats()` for full polylines.
 - Read the installed package types before touching MapLibre, pmtiles, @protomaps/basemaps or vite-plugin-pwa integration (SPEC §0).
+- Routing runs in `src/worker/router.worker.ts` (graph + geocoder from the data cache); the UI talks to it through `src/app/routing/client.ts` (typed messages in `src/worker/protocol.ts`).
+- Long press: our own 550 ms timer (iOS fires no contextmenu on touch) plus MapLibre's `contextmenu` (desktop right click, Chromium long touch). The menu backdrop closes on pointerdown, not click, or releasing the press would close it.
+- Real-touch long press is only testable in Chromium (CDP); check it on the iPhone during phase 6.
