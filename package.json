@@ -20,7 +20,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.sw.json && tsc --noEmit -p tsconfig.e2e.json",
-    "data:geocoder": "tsx scripts/04-build-geocoder.ts"
+    "data:geocoder": "tsx scripts/04-build-geocoder.ts",
+    "deploy": "tsx scripts/deploy.ts"
   },
   "engines": {
     "node": ">=22"
