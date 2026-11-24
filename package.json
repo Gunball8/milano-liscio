@@ -21,7 +21,8 @@
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.sw.json && tsc --noEmit -p tsconfig.e2e.json",
     "data:geocoder": "tsx scripts/04-build-geocoder.ts",
-    "deploy": "tsx scripts/deploy.ts"
+    "deploy": "tsx scripts/deploy.ts",
+    "data:refresh": "pnpm data:fetch --refresh && pnpm data:graph && pnpm data:geocoder && pnpm data:basemap --refresh && pnpm data:manifest"
   },
   "engines": {
     "node": ">=22"

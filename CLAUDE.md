@@ -32,6 +32,8 @@ pnpm data:manifest   # phase 2: public/data/manifest.json (version, sizes, SHA-2
 pnpm dev             # app on localhost (no service worker in dev)
 pnpm build && pnpm preview   # production build with service worker
 pnpm e2e             # Playwright, iPhone viewport, WebKit + Chromium (builds first)
+pnpm data:refresh    # monthly: newer Geofabrik extract and Protomaps build, rebuild everything
+pnpm run deploy      # GitHub Pages: build under /milano-liscio/, force-push dist/ to gh-pages (single commit)
 pnpm test            # vitest
 pnpm typecheck       # tsc --noEmit
 ```
@@ -57,3 +59,4 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Every screen publishes the height of its bottom element as `--panel-h` (`usePanelHeight`): the map attribution sits above it. Without that, the attribution floated mid-screen in Corrections and swallowed taps.
 - Attribution links open in a new tab: in the installed app a plain link would replace the map.
 - File export: iOS share sheet when it accepts files, else a download; e2e forces the download path with localStorage `liscio.downloadOnly`.
+- Published at https://gunball8.github.io/milano-liscio/ (public repo, gh-pages branch rewritten on each deploy). Never push tags: a local backup tag points to pre-publication history.

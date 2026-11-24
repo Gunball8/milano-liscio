@@ -25,6 +25,10 @@ pnpm e2e             # Playwright, iPhone viewport, WebKit + Chromium
 pnpm run deploy      # GitHub Pages
 ```
 
+Monthly while Milan keeps removing pavé (SPEC §8): `pnpm data:refresh && pnpm run deploy`. Installed apps then offer the update under Menu → Données et sources; corrections are re-attached to the new data.
+
+iPhone acceptance checklist: [docs/recette-iphone.md](docs/recette-iphone.md).
+
 ## Data and credits
 
 - Streets, surfaces, rails and addresses: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL. Extract by [Geofabrik](https://download.geofabrik.de/).
