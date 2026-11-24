@@ -25,8 +25,8 @@ export function SearchPanel() {
           <button type="button" className="icon-button" aria-label="Inverser départ et arrivée" onClick={swapEndpoints} disabled={!to}>
             ⇅
           </button>
-          <button type="button" className="icon-button" aria-label="Données" onClick={() => useApp.setState({ sheet: 'data', menu: null })}>
-            ⓘ{updateAvailable && <span className="dot badge" aria-label="mise à jour disponible" />}
+          <button type="button" className="icon-button" aria-label="Menu" onClick={() => useApp.setState({ sheet: 'menu', menu: null })}>
+            ☰{updateAvailable && <span className="dot badge" aria-label="mise à jour disponible" />}
           </button>
         </div>
       </div>

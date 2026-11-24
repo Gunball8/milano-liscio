@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { NextStretch, StretchKind } from '../../core/tracking.ts';
 import { report, setFollowing, stopTracking } from '../tracking/session.ts';
 import { useApp } from '../store.ts';
+import { usePanelHeight } from '../usePanelHeight.ts';
 
 const KIND_LABEL: Record<StretchKind, string> = { pave: 'pavé', rails: 'rails', slabs: 'dalles', push: 'à pied' };
 const m10 = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km` : `${Math.max(10, Math.round(v / 10) * 10)} m`);
@@ -25,14 +26,7 @@ export function TrackingOverlay() {
   const t = useApp((s) => s.tracking);
   const [flash, setFlash] = useState(false);
   const controls = useRef<HTMLElement>(null);
-  // Keeps map controls (attribution) above the tracking buttons.
-  useEffect(() => {
-    const el = controls.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--panel-h', `${el.offsetHeight + 24}px`));
-    ro.observe(el);
-    return () => ro.disconnect();
-  });
+  usePanelHeight(controls, 24);
   useEffect(() => {
     if (!flash) return;
     const id = setTimeout(() => setFlash(false), 1800);

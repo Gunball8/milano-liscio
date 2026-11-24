@@ -2,9 +2,12 @@ import { type LngLatBoundsLike, MapLibreMap } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
 import { readDataFile } from '../../storage/dataCache.ts';
 import { registerArchive } from '../map/pmtiles.ts';
+import { REPORTS_SOURCE, SELECTION_SOURCE, SURFACE_LAYERS, SURFACE_MIN_ZOOM, SURFACE_SOURCE, EMPTY, addCorrectionLayers, setData } from '../map/correctionLayers.ts';
 import { ALT_HIT_LAYER, addRouteLayers, keepRouteLayers, routeData, setRouteData } from '../map/routeLayers.ts';
 import { PMTILES_NAME, buildStyle } from '../map/style.ts';
+import { selectEdgeAt } from '../corrections/actions.ts';
 import { openMenu, selectAlternative } from '../routing/actions.ts';
+import { call } from '../routing/client.ts';
 import { setFollowing } from '../tracking/session.ts';
 import { type AppState, useApp } from '../store.ts';
 import { type Scheme, useColorScheme } from '../useColorScheme.ts';
@@ -36,6 +39,41 @@ function fitRoutes(map: MapLibreMap) {
   let b = [Infinity, Infinity, -Infinity, -Infinity];
   for (const r of routes) for (const seg of r.segments) for (const [x, y] of seg.coords) b = [Math.min(b[0]!, x), Math.min(b[1]!, y), Math.max(b[2]!, x), Math.max(b[3]!, y)];
   map.fitBounds(b as LngLatBoundsLike, { padding: { top: 170, bottom: panelHeight() + 30, left: 40, right: 40 }, maxZoom: 16, duration: 400 });
+}
+
+// ---------- corrections (SPEC §9.3) ----------
+
+let surfaceSeq = 0;
+
+/** Surface layer for the viewport, computed by the worker from the graph and the corrections. */
+async function refreshSurface(map: MapLibreMap) {
+  const s = useApp.getState();
+  const visible = s.mode === 'corrections' || s.surfaceLayer;
+  for (const id of SURFACE_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+  const zoomOk = map.getZoom() >= SURFACE_MIN_ZOOM;
+  if (s.surfaceZoomOk !== zoomOk) useApp.setState({ surfaceZoomOk: zoomOk });
+  if (!visible || !zoomOk || s.engine !== 'ready') {
+    setData(map, SURFACE_SOURCE, EMPTY);
+    return;
+  }
+  const seq = ++surfaceSeq;
+  const b = map.getBounds();
+  const res = await call({ type: 'surface', bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] });
+  if (seq === surfaceSeq) setData(map, SURFACE_SOURCE, { type: 'FeatureCollection', features: res.features });
+}
+
+function pushSelection(map: MapLibreMap) {
+  const s = useApp.getState();
+  const edges = s.mode === 'corrections' ? (s.street ?? (s.selectedEdge ? [s.selectedEdge] : [])) : [];
+  setData(map, SELECTION_SOURCE, {
+    type: 'FeatureCollection',
+    features: edges.map((e) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: e.coords } })),
+  });
+  const reports = s.mode === 'corrections' ? s.reports.filter((r) => r.status === 'todo') : [];
+  setData(map, REPORTS_SOURCE, {
+    type: 'FeatureCollection',
+    features: reports.map((r) => ({ type: 'Feature', properties: { id: r.id }, geometry: { type: 'Point', coordinates: [r.lon, r.lat] } })),
+  });
 }
 
 /** While tracking: keep the position in the lower part of the screen, rotated to the course (SPEC §9.2). */
@@ -125,8 +163,20 @@ export function MapView() {
         const m = map;
         m.on('load', () => {
           addRouteLayers(m, schemeRef.current);
+          addCorrectionLayers(m);
           pushRoute(m);
+          pushSelection(m);
+          void refreshSurface(m);
           fitRoutes(m);
+        });
+        let moveTimer: ReturnType<typeof setTimeout> | null = null;
+        m.on('moveend', () => {
+          if (moveTimer) clearTimeout(moveTimer);
+          moveTimer = setTimeout(() => void refreshSurface(m), 120);
+        });
+        // In the Corrections screen a tap picks the nearest street.
+        m.on('click', (ev) => {
+          if (useApp.getState().mode === 'corrections') void selectEdgeAt(ev.lngLat.lng, ev.lngLat.lat);
         });
         m.on('click', ALT_HIT_LAYER, (ev) => {
           const level = ev.features?.[0]?.properties?.['level'];
@@ -159,6 +209,16 @@ export function MapView() {
         const m = mapRef.current;
         if (!m || !m.getSource('liscio-route')) return;
         if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.position !== prev.position || s.mode !== prev.mode) pushRoute(m);
+        if (s.mode !== prev.mode || s.surfaceLayer !== prev.surfaceLayer || s.surfaceKey !== prev.surfaceKey || s.engine !== prev.engine) void refreshSurface(m);
+        if (s.mode !== prev.mode || s.selectedEdge !== prev.selectedEdge || s.street !== prev.street || s.reports !== prev.reports) pushSelection(m);
+        if (s.focusReport && s.focusReport !== prev.focusReport) m.flyTo({ center: [s.focusReport.lon, s.focusReport.lat], zoom: 17, duration: 600 });
+        else if (s.mode === 'corrections' && s.selectedEdge && s.selectedEdge.edge !== prev.selectedEdge?.edge && !s.focusReport) {
+          const [lon, lat] = s.selectedEdge.mid;
+          if (!m.getBounds().contains([lon, lat])) m.flyTo({ center: [lon, lat], zoom: Math.max(m.getZoom(), 16), duration: 500 });
+        }
+        // Corrections centre the map on reports and segments: drop the route-framing padding.
+        if (s.mode === 'corrections' && prev.mode !== 'corrections') m.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 0 });
+        if (s.mode === 'corrections') return;
         if (s.mode === 'tracking') {
           const followChanged = s.tracking?.following !== prev.tracking?.following;
           const turned = s.tracking?.bearing !== prev.tracking?.bearing;
@@ -182,7 +242,10 @@ export function MapView() {
     m.once('style.load', () => {
       for (const id of ['lr-alt', 'lr-rail', 'lr-casing', 'lr-main', 'lr-push', 'lr-me', 'lr-ends', ALT_HIT_LAYER]) if (m.getLayer(id)) m.removeLayer(id);
       addRouteLayers(m, scheme);
+      addCorrectionLayers(m);
       pushRoute(m);
+      pushSelection(m);
+      void refreshSurface(m);
     });
     m.setStyle(buildStyle(scheme), { diff: false, transformStyle: keepRouteLayers });
   }, [scheme]);

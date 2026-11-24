@@ -75,8 +75,14 @@ export function DataSheet() {
 
         <h3>Sources</h3>
         <p className="note">
-          Carte et réseau : © <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a> (ODbL). Fond de carte :{' '}
-          <a href="https://protomaps.com">Protomaps</a>, build {installed?.basemapBuild?.replace('.pmtiles', '') ?? '–'}. Polices Noto (OFL).
+          Carte et réseau : ©{' '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+            contributeurs OpenStreetMap
+          </a>{' '}
+          (ODbL). Fond de carte :{' '}
+          <a href="https://protomaps.com" target="_blank" rel="noopener noreferrer">
+            Protomaps
+          </a>, build {installed?.basemapBuild?.replace('.pmtiles', '') ?? '–'}. Polices Noto (OFL).
         </p>
       </section>
     </div>

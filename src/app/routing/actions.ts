@@ -3,6 +3,7 @@ import { addFavorite, getSetting, listFavorites, pushRecent, removeFavorite, set
 import { GeoError, getPosition } from '../geo.ts';
 import { type Endpoint, MY_POSITION, useApp } from '../store.ts';
 import { call } from './client.ts';
+import { syncWorker } from './sync.ts';
 
 const set = useApp.setState;
 const get = useApp.getState;
@@ -19,6 +20,7 @@ export async function initEngine(version: string) {
     const info = await call({ type: 'init', version });
     console.info(`routing worker ready in ${info.ms} ms (${info.nodes} nodes, ${info.places} places)`);
     set({ engine: 'ready' });
+    await syncWorker(); // settings and corrections before the first route
     if (get().to) void computeRoute();
   } catch (err) {
     console.error(err);

@@ -18,7 +18,7 @@ test('offline relaunch shows the map and its labels over the whole zone', async 
     if (!r.url().endsWith('/data/manifest.json')) failed.push(`${r.url()} (${r.failure()?.errorText ?? ''})`);
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: /^Données/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Menu/ })).toBeVisible();
   await waitForMap(page);
   // Negative control: the network really is off (the manifest is never served from cache).
   const reach = await page.evaluate(() =>

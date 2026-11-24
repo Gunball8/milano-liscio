@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import type { DataManifest, Progress } from '../storage/dataCache.ts';
+import type { CorrectionRecord, CorrectionStatus } from '../core/corrections.ts';
 import type { LockState } from '../core/screenLock.ts';
 import type { NextStretch } from '../core/tracking.ts';
-import type { Favorite } from '../storage/idb.ts';
-import type { RouteView } from '../worker/protocol.ts';
+import type { Favorite, Report } from '../storage/idb.ts';
+import { DEFAULT_PREFS, type EdgeInfo, type Prefs, type RouteView } from '../worker/protocol.ts';
 
 /** Departure or arrival. "position" is resolved with the GPS when a route is computed. */
 export interface Endpoint {
@@ -53,7 +54,7 @@ export interface AppState {
   error: string | null;
   /** An update download is running while the map stays usable. */
   updating: boolean;
-  sheet: 'none' | 'data';
+  sheet: 'none' | 'data' | 'menu' | 'settings' | 'list';
   /** Bumped when the map should be rebuilt on new data. */
   mapKey: number;
 
@@ -74,8 +75,27 @@ export interface AppState {
   menu: { lon: number; lat: number; x: number; y: number; street: string | null } | null;
 
   // ---- tracking (phase 4)
-  mode: 'map' | 'tracking';
+  mode: 'map' | 'tracking' | 'corrections';
   tracking: TrackingState | null;
+
+  // ---- corrections and settings (phase 5)
+  prefs: Prefs;
+  corrections: CorrectionRecord[];
+  correctionStatus: Record<string, CorrectionStatus>;
+  reports: Report[];
+  /** "Revêtements" layer shown outside the Corrections screen. */
+  surfaceLayer: boolean;
+  /** Bumped when the surface layer must be redrawn (corrections changed). */
+  surfaceKey: number;
+  selectedEdge: EdgeInfo | null;
+  /** "Appliquer à toute la rue" switch, set immediately on tap. */
+  wholeStreet: boolean;
+  /** The contiguous edges of the same street once loaded, else null. */
+  street: EdgeInfo[] | null;
+  focusReport: Report | null;
+  toast: string | null;
+  /** Zoomed in enough for the surface layer. */
+  surfaceZoomOk: boolean;
 }
 
 export const useApp = create<AppState>(() => ({
@@ -103,6 +123,18 @@ export const useApp = create<AppState>(() => ({
   menu: null,
   mode: 'map',
   tracking: null,
+  prefs: DEFAULT_PREFS,
+  corrections: [],
+  correctionStatus: {},
+  reports: [],
+  surfaceLayer: false,
+  surfaceKey: 0,
+  selectedEdge: null,
+  wholeStreet: false,
+  street: null,
+  focusReport: null,
+  toast: null,
+  surfaceZoomOk: true,
 }));
 
 // Exposed for end-to-end tests and debugging from the console.

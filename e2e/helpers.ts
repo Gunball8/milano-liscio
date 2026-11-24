@@ -10,7 +10,7 @@ export async function firstLaunch(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Continuer dans le navigateur' }).click();
   await page.getByRole('button', { name: /^Télécharger/ }).click();
-  await expect(page.getByRole('button', { name: /^Données/ })).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByRole('button', { name: /^Menu/ })).toBeVisible({ timeout: 180_000 });
   await waitForMap(page);
 }
 

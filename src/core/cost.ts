@@ -30,6 +30,24 @@ export const LEVELS: readonly Level[] = [
   { id: 3, label: 'Zéro pavé', penalties: { surface: [0, 3, 30, 0.5, 0.05], rail: 15, crossing: 60 } },
 ];
 
+/** "Pénalités avancées" (SPEC §9.4): multipliers applied to every level's penalties. 1 = brief values. */
+export interface PenaltyFactors {
+  pave: number;
+  slabs: number;
+  rails: number;
+  crossings: number;
+}
+
+export const DEFAULT_FACTORS: PenaltyFactors = { pave: 1, slabs: 1, rails: 1, crossings: 1 };
+
+export function scaledPenalties(p: Penalties, f: PenaltyFactors): Penalties {
+  return {
+    surface: [p.surface[0], p.surface[1] * f.slabs, p.surface[2] * f.pave, p.surface[3], p.surface[4]],
+    rail: p.rail * f.rails,
+    crossing: p.crossing * f.crossings,
+  };
+}
+
 /** User correction on one edge (SPEC §9.3): replaces surface class and/or rails before costing. */
 export interface EdgeCorrection {
   /** Surface code (see SURFACE_CODE). */

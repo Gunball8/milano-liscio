@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { clearRoute, computeRoute, selectAlternative } from '../routing/actions.ts';
 import { startTracking } from '../tracking/session.ts';
 import { useApp } from '../store.ts';
+import { usePanelHeight } from '../usePanelHeight.ts';
 import { LevelSelector } from './LevelSelector.tsx';
 
 const m = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2, minimumFractionDigits: 1 })} km` : `${Math.round(v)} m`);
@@ -18,15 +19,7 @@ export function RoutePanel() {
   const error = useApp((s) => s.routeError);
   const engine = useApp((s) => s.engine);
   const panel = useRef<HTMLElement>(null);
-
-  // Exposes the panel height so map controls and route framing stay clear of it.
-  useEffect(() => {
-    const el = panel.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--panel-h', `${el.offsetHeight}px`));
-    ro.observe(el);
-    return () => ro.disconnect();
-  });
+  usePanelHeight(panel);
 
   if (!to) {
     return (

@@ -62,14 +62,14 @@ export function addRouteLayers(map: MapLibreMap, scheme: Scheme) {
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
 }
 
-/** Keeps our source and layers when the basemap style is swapped (light/dark). */
+/** Keeps our sources (liscio-*) and layers (lr-*, ls-*) when the basemap style is swapped (light/dark). */
 export function keepRouteLayers(prev: StyleSpecification | undefined, next: StyleSpecification): StyleSpecification {
   if (!prev) return next;
-  const src = prev.sources[ROUTE_SOURCE];
+  const ours = Object.fromEntries(Object.entries(prev.sources).filter(([id]) => id.startsWith('liscio-')));
   return {
     ...next,
-    sources: src ? { ...next.sources, [ROUTE_SOURCE]: src } : next.sources,
-    layers: [...next.layers, ...prev.layers.filter((l) => l.id.startsWith(PREFIX))],
+    sources: { ...next.sources, ...ours },
+    layers: [...next.layers, ...prev.layers.filter((l) => l.id.startsWith(PREFIX) || l.id.startsWith('ls-'))],
   };
 }
 

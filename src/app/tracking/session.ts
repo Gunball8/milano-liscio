@@ -89,7 +89,7 @@ async function recalculate(from: { lon: number; lat: number }) {
       return;
     }
     const route = res.result.routes.find((r) => r.level === selected) ?? res.result.routes[0]!;
-    tracker = new RouteTracker(route.segments);
+    tracker = new RouteTracker(route.segments, { ride: get().prefs.speed, push: 4.5 });
     detector.reset();
     set({ routes: [route], selected: route.level });
     patch({ ...progressPatch(), recalcs: (get().tracking?.recalcs ?? 0) + 1, error: null });
@@ -111,7 +111,7 @@ export async function startTracking() {
   const s = get();
   const route = s.routes?.find((r) => r.level === s.selected);
   if (!route) return;
-  tracker = new RouteTracker(route.segments);
+  tracker = new RouteTracker(route.segments, { ride: s.prefs.speed, push: 4.5 });
   detector.reset();
   lastFix = null;
   recalculating = false;

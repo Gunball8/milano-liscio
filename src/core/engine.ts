@@ -3,7 +3,7 @@
  * three computations per request of SPEC §7 (level 0, chosen level, level 3).
  */
 import { Router } from './astar.ts';
-import { type CostOptions, type Corrections, LEVELS, type Level, computeArcCosts } from './cost.ts';
+import { type CostOptions, type Corrections, DEFAULT_FACTORS, LEVELS, type Level, type PenaltyFactors, computeArcCosts, scaledPenalties } from './cost.ts';
 import type { Graph } from './graph.ts';
 import { type Route, type Speeds, DEFAULT_SPEEDS, assembleRoute } from './route.ts';
 import { SNAP_MAX_M, SnapIndex, type Snapped } from './snap.ts';
@@ -33,6 +33,7 @@ export class RoutingEngine {
   private costs: (Float64Array | null)[] = LEVELS.map(() => null);
   private corrections: Corrections | undefined;
   private costOptions: CostOptions = {};
+  private factors: PenaltyFactors = DEFAULT_FACTORS;
   speeds: Speeds = DEFAULT_SPEEDS;
 
   constructor(readonly graph: Graph) {
@@ -50,10 +51,15 @@ export class RoutingEngine {
     this.costs = LEVELS.map(() => null);
   }
 
+  setPenaltyFactors(f: PenaltyFactors) {
+    this.factors = f;
+    this.costs = LEVELS.map(() => null);
+  }
+
   costsFor(level: number): Float64Array {
     let c = this.costs[level];
     if (!c) {
-      c = computeArcCosts(this.graph, LEVELS[level]!.penalties, this.corrections, this.costOptions);
+      c = computeArcCosts(this.graph, scaledPenalties(LEVELS[level]!.penalties, this.factors), this.corrections, this.costOptions);
       this.costs[level] = c;
     }
     return c;

@@ -17,6 +17,9 @@ export interface EdgeSpec {
   cross?: number;
   /** Intermediate vertices in meters from the Duomo. */
   via?: [number, number][];
+  /** OSM way id (default 1000 + edge index) and street name. */
+  wayId?: number;
+  name?: string;
 }
 
 /** nodes: [x, y] in meters from the Duomo. */
@@ -74,8 +77,9 @@ export function tinyGraph(nodes: [number, number][], edges: EdgeSpec[]): Graph {
     arcRail[i] = a.rail;
     arcCross[i] = a.cross;
   }
+  const names = [...new Set(edges.map((e) => e.name).filter((v): v is string => !!v))];
   const bin = serializeGraph(
-    { builtAt: '', osmBase: null, railD: 3, nodeCount: n, arcCount: arcs.length, edgeCount: edges.length, coordCount: coordLon.length, wayCount: edges.length, names: [] },
+    { builtAt: '', osmBase: null, railD: 3, nodeCount: n, arcCount: arcs.length, edgeCount: edges.length, coordCount: coordLon.length, wayCount: edges.length, names },
     {
       nodeLon: Int32Array.from(nodes.map(([x, y]) => ll(x, y)[0])),
       nodeLat: Int32Array.from(nodes.map(([x, y]) => ll(x, y)[1])),
@@ -92,8 +96,8 @@ export function tinyGraph(nodes: [number, number][], edges: EdgeSpec[]): Graph {
       edgeCoordStart: Uint32Array.from(edgeCoordStart),
       coordLon: Int32Array.from(coordLon),
       coordLat: Int32Array.from(coordLat),
-      wayId: Float64Array.from(edges.map((_, i) => 1000 + i)),
-      wayName: new Int32Array(edges.length).fill(-1),
+      wayId: Float64Array.from(edges.map((e, i) => e.wayId ?? 1000 + i)),
+      wayName: Int32Array.from(edges.map((e) => (e.name ? names.indexOf(e.name) : -1))),
       wayDay: new Uint16Array(edges.length),
     },
   );

@@ -12,8 +12,8 @@ import { RAW_DIR, readFetchLog } from './lib/overpass.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DATA = path.join(ROOT, 'public/data');
-/** Files the app downloads, in order. The geocoder joins in phase 3. */
-const FILES = ['milano-graph.bin', 'milano.pmtiles', 'milano-geocoder.bin'];
+/** Files the app downloads, in order. */
+const FILES = ['milano-graph.bin', 'milano.pmtiles', 'milano-geocoder.bin', 'milano-ways.bin'];
 
 const sha256 = (file: string) =>
   new Promise<string>((resolve, reject) => {

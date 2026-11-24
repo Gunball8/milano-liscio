@@ -19,7 +19,9 @@ export function buildStyle(scheme: Scheme): StyleSpecification {
       protomaps: {
         type: 'vector',
         url: `pmtiles://${PMTILES_NAME}`,
-        attribution: '<a href="https://protomaps.com">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        // target=_blank: in the installed app, following a link must not replace the map
+        attribution:
+          '<a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
       },
     },
     layers: layers('protomaps', namedFlavor(scheme), { lang: 'it' }),

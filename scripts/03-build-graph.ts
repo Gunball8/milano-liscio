@@ -22,6 +22,7 @@ import {
   isPresentRail,
 } from '../src/core/classify.ts';
 import { COORD_SCALE, FLAG_PUSH, type GraphArrays, serializeGraph } from '../src/core/graph.ts';
+import { keepTag, serializeWayTags } from '../src/core/waytags.ts';
 import { splitIntoEdges } from './lib/edges.ts';
 import { type OsmWay, readRaw, readTiles } from './lib/osm.ts';
 import { readFetchLog } from './lib/overpass.ts';
@@ -38,6 +39,7 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'public/data/milano-graph.bin');
+const OUT_TAGS = path.join(ROOT, 'public/data/milano-ways.bin');
 const SIZE_WARN_MB = 30;
 
 interface ArcSpec {
@@ -273,6 +275,28 @@ async function main() {
   );
   await mkdir(path.dirname(OUT), { recursive: true });
   await writeFile(OUT, bin);
+
+  // OSM tags per graph way, for the Corrections screen (name is in the graph already)
+  const tagSets: string[] = [];
+  const setIndex = new Map<string, number>();
+  const wayToSet = new Uint32Array(graphWays.length);
+  graphWays.forEach((w, i) => {
+    const s = Object.entries(w.tags ?? {})
+      .filter(([k]) => k !== 'name' && keepTag(k))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+    let idx = setIndex.get(s);
+    if (idx === undefined) {
+      idx = tagSets.length;
+      setIndex.set(s, idx);
+      tagSets.push(s);
+    }
+    wayToSet[i] = idx;
+  });
+  const tagsBin = serializeWayTags(tagSets, wayToSet);
+  await writeFile(OUT_TAGS, tagsBin);
+  console.log(`way tags: ${tagSets.length} distinct sets for ${graphWays.length} ways, ${(tagsBin.byteLength / 1e6).toFixed(2)} MB`);
 
   const mb = bin.byteLength / 1e6;
   console.log(`nodes ${nodeCount}, arcs ${arcs.length}, edges ${mainEdges.length}, coords ${coordCount}, ways ${graphWays.length}, names ${names.length}`);

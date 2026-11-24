@@ -25,6 +25,7 @@ pnpm data:graph      # phase 1: build public/data/milano-graph.bin
 pnpm data:build      # fetch + graph
 pnpm route "45.4642,9.19" "45.452,9.177" --level 2   # CLI router, writes out/route.geojson
 pnpm calibrate       # phase 1: docs/calibration.md + docs/calibration-map.html data
+pnpm data:graph also writes public/data/milano-ways.bin (OSM tags per graph way, for the Corrections sheet)
 pnpm data:geocoder   # phase 3: public/data/milano-geocoder.bin (streets, house numbers, places)
 pnpm data:basemap    # phase 2: public/data/milano.pmtiles + local fonts/sprites (needs `brew install pmtiles`)
 pnpm data:manifest   # phase 2: public/data/manifest.json (version, sizes, SHA-256)
@@ -52,3 +53,7 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Fix times come from `Date.now()` at reception: position timestamps are in microseconds in Playwright's WebKit. Emulated fixes carry no heading or speed, so the course is derived from successive fixes.
 - Position and course are published in one store update; otherwise the map follows a new position with the previous bearing.
 - Not testable headless: wake lock (denied in test browsers) and resume after lock screen; both are on the phase 6 checklist.
+- Corrections (phase 5): model and re-attachment in `src/core/corrections.ts` (same way near the stored midpoint within 25 m, else same name within 100 m, else orphan; identical to OSM = obsolete). One record per edge; a whole-street action creates one per edge, grouped in the list by name + values + time.
+- Every screen publishes the height of its bottom element as `--panel-h` (`usePanelHeight`): the map attribution sits above it. Without that, the attribution floated mid-screen in Corrections and swallowed taps.
+- Attribution links open in a new tab: in the installed app a plain link would replace the map.
+- File export: iOS share sheet when it accepts files, else a download; e2e forces the download path with localStorage `liscio.downloadOnly`.

@@ -3,6 +3,7 @@
  * reports. Nothing here ever leaves the phone.
  */
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
+import type { CorrectionRecord } from '../core/corrections.ts';
 
 export interface Favorite {
   id: string;
@@ -36,7 +37,7 @@ interface LiscioDB extends DBSchema {
   favorites: { key: string; value: Favorite };
   recents: { key: string; value: Recent };
   settings: { key: string; value: unknown };
-  corrections: { key: string; value: { id: string } & Record<string, unknown> };
+  corrections: { key: string; value: CorrectionRecord };
   reports: { key: string; value: Report };
 }
 
@@ -106,3 +107,37 @@ export async function addReport(r: Omit<Report, 'id' | 'status'>): Promise<Repor
 export async function listReports(): Promise<Report[]> {
   return (await (await db()).getAll('reports')).sort((a, b) => b.at - a.at);
 }
+
+export async function updateReport(r: Report): Promise<void> {
+  await (await db()).put('reports', r);
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  await (await db()).delete('reports', id);
+}
+
+export async function listCorrections(): Promise<CorrectionRecord[]> {
+  return (await (await db()).getAll('corrections')).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function putCorrections(list: CorrectionRecord[]): Promise<void> {
+  const tx = (await db()).transaction('corrections', 'readwrite');
+  await Promise.all([...list.map((c) => tx.store.put(c)), tx.done]);
+}
+
+export async function deleteCorrections(ids: string[]): Promise<void> {
+  const tx = (await db()).transaction('corrections', 'readwrite');
+  await Promise.all([...ids.map((id) => tx.store.delete(id)), tx.done]);
+}
+
+export async function putFavorites(list: Favorite[]): Promise<void> {
+  const tx = (await db()).transaction('favorites', 'readwrite');
+  await Promise.all([...list.map((f) => tx.store.put(f)), tx.done]);
+}
+
+export async function putReports(list: Report[]): Promise<void> {
+  const tx = (await db()).transaction('reports', 'readwrite');
+  await Promise.all([...list.map((r) => tx.store.put(r)), tx.done]);
+}
+
+export { newId };
