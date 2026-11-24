@@ -1,6 +1,6 @@
 # Calibrage des pénalités (phase 1)
 
-Généré par `pnpm calibrate` le 2026-11-24 15:05 UTC, graphe du 2026-11-23 (D = 3 m). Pénalités de départ du §7. Carte : `docs/calibration-map.html`. Ne pas éditer à la main : les commentaires vont dans `docs/calibration-notes.md`, inséré ci-dessous.
+Généré par `pnpm calibrate` le 2026-11-24 15:11 UTC, graphe du 2026-11-23 (D = 3 m). Pénalités de départ du §7. Carte : `docs/calibration-map.html`. Ne pas éditer à la main : les commentaires vont dans `docs/calibration-notes.md`, inséré ci-dessous.
 
 ## Lecture et décisions proposées (phase 1)
 
@@ -113,7 +113,7 @@ Accrochage : départ à 17 m, arrivée à 0 m.
 
 ## Temps de calcul
 
-Requête complète (niveaux 0, 2 et 3, accrochage compris) sur cet ordinateur : 3 ms en moyenne, 4 ms au pire. Budget iPhone : 500 ms.
+Requête complète (niveaux 0, 2 et 3, accrochage compris) sur cet ordinateur : 2 ms en moyenne, 5 ms au pire. Budget iPhone : 500 ms.
 
 ## Pénalités utilisées
 

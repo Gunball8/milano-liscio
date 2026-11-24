@@ -3,8 +3,12 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023"],
-    "types": ["node"],
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
@@ -13,5 +17,11 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["scripts", "src", "tests"]
+  "include": [
+    "scripts",
+    "tests",
+    "src/core",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
 }

@@ -1,0 +1,295 @@
+/* Milano Liscio: tokens, light and dark themes (SPEC §4.6), safe areas, 56 px touch targets. */
+:root {
+  --bg: #f7f5ef;
+  --surface: #ffffff;
+  --fg: #1d2421;
+  --muted: #5d6762;
+  --line: #d9ddd8;
+  --accent: #123a31;
+  --accent-fg: #f6f1e3;
+  --danger: #b3261e;
+  --pave: #d6336c;
+  --shadow: 0 4px 18px rgb(0 0 0 / 0.14);
+  --touch: 56px;
+  --radius: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101513;
+    --surface: #1a211e;
+    --fg: #e8ece9;
+    --muted: #9aa59f;
+    --line: #2c3531;
+    --accent: #7fc4ae;
+    --accent-fg: #0c1e19;
+    --danger: #f2b8b5;
+    --shadow: 0 4px 18px rgb(0 0 0 / 0.5);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+a {
+  color: inherit;
+}
+
+/* ---------- full-page screens ---------- */
+
+.screen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+}
+
+.screen h1 {
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.screen p {
+  margin: 0;
+}
+
+.logo {
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 8px;
+}
+
+.inline-icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.figures {
+  font-variant-numeric: tabular-nums;
+}
+
+.error-text {
+  color: var(--danger);
+}
+
+/* ---------- controls ---------- */
+
+.button {
+  min-height: var(--touch);
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--line);
+}
+
+.icon-button {
+  width: var(--touch);
+  height: var(--touch);
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip {
+  min-height: var(--touch);
+  padding: 0 18px;
+  border: 0;
+  border-radius: calc(var(--touch) / 2);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pave);
+}
+
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+/* ---------- map screen ---------- */
+
+.map {
+  position: fixed;
+  inset: 0;
+}
+
+.topbar {
+  position: fixed;
+  top: calc(10px + var(--safe-top));
+  left: calc(10px + var(--safe-left));
+  right: calc(10px + var(--safe-right));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.brand {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + var(--safe-bottom));
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.toast.error {
+  color: var(--danger);
+}
+
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+  padding-bottom: var(--safe-bottom);
+}
+
+.maplibregl-ctrl-bottom-right {
+  padding-right: var(--safe-right);
+}
+
+/* ---------- bottom sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.28);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85%;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 8px calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.sheet h3 {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sheet p {
+  margin: 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}

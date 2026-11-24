@@ -134,8 +134,8 @@ async function main() {
   const edgeTo = new Uint32Array(mainEdges.length);
   const edgeWay = new Uint32Array(mainEdges.length);
   const edgeCoordStart = new Uint32Array(mainEdges.length + 1);
-  let coordCount = 0;
-  for (const e of mainEdges) coordCount += e.ll.length / 2;
+  let coordCount = 0; // interior points only (graph v2)
+  for (const e of mainEdges) coordCount += e.ll.length / 2 - 2;
   const coordLon = new Int32Array(coordCount);
   const coordLat = new Int32Array(coordCount);
 
@@ -157,7 +157,7 @@ async function main() {
     edgeTo[ei] = to;
     edgeWay[ei] = wi;
     edgeCoordStart[ei] = c;
-    for (let i = 0; i < n; i++) {
+    for (let i = 1; i < n - 1; i++) {
       coordLon[c] = Math.round(e.ll[2 * i]! * COORD_SCALE);
       coordLat[c] = Math.round(e.ll[2 * i + 1]! * COORD_SCALE);
       c++;

@@ -6,3 +6,7 @@ docs/*.data.js
 public/data/
 out/
 docs/calibration-map.data.js
+public/fonts/
+public/sprites/
+test-results/
+playwright-report/

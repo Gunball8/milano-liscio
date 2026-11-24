@@ -10,7 +10,8 @@
  */
 
 export const GRAPH_MAGIC = 0x4d4c4752; // "MLGR"
-export const GRAPH_VERSION = 1;
+/** v2: edge geometry stores interior points only (endpoints are the nodes). */
+export const GRAPH_VERSION = 2;
 export const COORD_SCALE = 1e7;
 
 /** arcFlags bits: surface class code in bits 0–2, push in bit 3. */
@@ -53,7 +54,7 @@ export interface GraphArrays {
   edgeFrom: Uint32Array;
   edgeTo: Uint32Array;
   edgeWay: Uint32Array;
-  /** Geometry of edge e: coords edgeCoordStart[e] .. edgeCoordStart[e+1]-1, first = source node of the forward arc. */
+  /** Interior points of edge e: coords edgeCoordStart[e] .. edgeCoordStart[e+1]-1, from edgeFrom towards edgeTo. */
   edgeCoordStart: Uint32Array;
   coordLon: Int32Array;
   coordLat: Int32Array;
@@ -170,6 +171,16 @@ export function findArc(g: Graph, edge: number, reversed: boolean, fromNode: num
   const want = reversed ? ~edge : edge;
   for (let a = g.firstArc[fromNode]!; a < g.firstArc[fromNode + 1]!; a++) if (g.arcEdge[a] === want) return a;
   return -1;
+}
+
+/** Full polyline of an edge in degrees, from edgeFrom to edgeTo (endpoints included). */
+export function edgeLngLats(g: Graph, e: number): [number, number][] {
+  const from = g.edgeFrom[e]!;
+  const to = g.edgeTo[e]!;
+  const pts: [number, number][] = [[g.nodeLon[from]! / COORD_SCALE, g.nodeLat[from]! / COORD_SCALE]];
+  for (let i = g.edgeCoordStart[e]!; i < g.edgeCoordStart[e + 1]!; i++) pts.push([g.coordLon[i]! / COORD_SCALE, g.coordLat[i]! / COORD_SCALE]);
+  pts.push([g.nodeLon[to]! / COORD_SCALE, g.nodeLat[to]! / COORD_SCALE]);
+  return pts;
 }
 
 export function wayNameOf(g: Graph, way: number): string | null {

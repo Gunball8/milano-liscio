@@ -25,8 +25,22 @@ pnpm data:graph      # phase 1: build public/data/milano-graph.bin
 pnpm data:build      # fetch + graph
 pnpm route "45.4642,9.19" "45.452,9.177" --level 2   # CLI router, writes out/route.geojson
 pnpm calibrate       # phase 1: docs/calibration.md + docs/calibration-map.html data
+pnpm data:basemap    # phase 2: public/data/milano.pmtiles + local fonts/sprites (needs `brew install pmtiles`)
+pnpm data:manifest   # phase 2: public/data/manifest.json (version, sizes, SHA-256)
+pnpm dev             # app on localhost (no service worker in dev)
+pnpm build && pnpm preview   # production build with service worker
+pnpm e2e             # Playwright, iPhone viewport, WebKit + Chromium (builds first)
 pnpm test            # vitest
 pnpm typecheck       # tsc --noEmit
 ```
 
 The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data.js` next to it).
+
+## App notes
+
+- `src/app` (React + zustand), `src/storage/dataCache.ts` (download, SHA-256 check, versioned caches `data-<version>`), `src/sw.ts` (injectManifest: precaches shell, fonts, sprites; serves `/data/*` from cache).
+- Data URLs carry `?v=<version>` so two versions never mix in caches.
+- MapLibre 6 resolves its worker next to its own module, which breaks once bundled: `src/app/map/pmtiles.ts` imports `maplibre-gl/dist/maplibre-gl-worker.mjs?url` and calls `setWorkerUrl` (and `.mjs` is in the precache glob).
+- PMTiles are read from a Blob through `FileSource` (key = file name `milano.pmtiles`), never via HTTP range requests.
+- Graph format v2: edge geometry stores interior points only; use `edgeLngLats()` for full polylines.
+- Read the installed package types before touching MapLibre, pmtiles, @protomaps/basemaps or vite-plugin-pwa integration (SPEC §0).

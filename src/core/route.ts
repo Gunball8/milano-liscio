@@ -5,7 +5,7 @@
 import type { PathPiece, SearchResult } from './astar.ts';
 import { type Corrections, effectiveArc } from './cost.ts';
 import { MILAN_PROJECTION as P } from './geo.ts';
-import { COORD_SCALE, type Graph, arcEdgeIndex, arcReversed } from './graph.ts';
+import { type Graph, arcEdgeIndex, arcReversed, edgeLngLats } from './graph.ts';
 
 export type LngLat = [number, number];
 
@@ -48,11 +48,7 @@ export const DEFAULT_SPEEDS: Speeds = { ride: 15, push: 4.5 };
 
 /** Geometry of an arc between two fractions of its length, in travel direction. */
 export function arcSubline(g: Graph, arc: number, t0: number, t1: number): LngLat[] {
-  const e = arcEdgeIndex(g, arc);
-  const start = g.edgeCoordStart[e]!;
-  const end = g.edgeCoordStart[e + 1]!;
-  const pts: LngLat[] = [];
-  for (let i = start; i < end; i++) pts.push([g.coordLon[i]! / COORD_SCALE, g.coordLat[i]! / COORD_SCALE]);
+  const pts: LngLat[] = edgeLngLats(g, arcEdgeIndex(g, arc));
   if (arcReversed(g, arc)) pts.reverse();
   if (t0 <= 0 && t1 >= 1) return pts;
   const cum = [0];
@@ -110,14 +106,9 @@ export function assembleRoute(g: Graph, result: SearchResult, corrections?: Corr
 
 /** Geographic point at fraction t of an edge (forward geometry). */
 export function pointOnEdge(g: Graph, edge: number, t: number): { lon: number; lat: number } {
-  const start = g.edgeCoordStart[edge]!;
-  const end = g.edgeCoordStart[edge + 1]!;
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (let i = start; i < end; i++) {
-    xs.push(P.x(g.coordLon[i]! / COORD_SCALE));
-    ys.push(P.y(g.coordLat[i]! / COORD_SCALE));
-  }
+  const pts = edgeLngLats(g, edge);
+  const xs = pts.map(([lon]) => P.x(lon));
+  const ys = pts.map(([, lat]) => P.y(lat));
   let total = 0;
   for (let i = 1; i < xs.length; i++) total += Math.hypot(xs[i]! - xs[i - 1]!, ys[i]! - ys[i - 1]!);
   let d = t * total;
@@ -129,5 +120,5 @@ export function pointOnEdge(g: Graph, edge: number, t: number): { lon: number; l
     }
     d -= l;
   }
-  return { lon: g.coordLon[start]! / COORD_SCALE, lat: g.coordLat[start]! / COORD_SCALE };
+  return { lon: pts[0]![0], lat: pts[0]![1] };
 }

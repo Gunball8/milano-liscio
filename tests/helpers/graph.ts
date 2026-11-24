@@ -32,9 +32,11 @@ export function tinyGraph(nodes: [number, number][], edges: EdgeSpec[]): Graph {
     edgeCoordStart.push(coordLon.length);
     let len = 0;
     pts.forEach(([x, y], k) => {
-      const [lo, la] = ll(x, y);
-      coordLon.push(lo);
-      coordLat.push(la);
+      if (k > 0 && k < pts.length - 1) {
+        const [lo, la] = ll(x, y);
+        coordLon.push(lo);
+        coordLat.push(la);
+      }
       if (k > 0) len += Math.hypot(x - pts[k - 1]![0], y - pts[k - 1]![1]);
     });
     edgeLength.push(len);
