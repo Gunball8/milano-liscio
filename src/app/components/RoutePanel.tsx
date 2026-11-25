@@ -1,14 +1,28 @@
 import { useRef } from 'react';
-import { clearRoute, computeRoute, selectAlternative } from '../routing/actions.ts';
+import type { SegmentView } from '../../worker/protocol.ts';
+import { LEVELS } from '../../core/cost.ts';
+import { clearRoute, computeRoute, setLevel } from '../routing/actions.ts';
 import { startTracking } from '../tracking/session.ts';
 import { useApp } from '../store.ts';
 import { usePanelHeight } from '../usePanelHeight.ts';
-import { LevelSelector } from './LevelSelector.tsx';
+import { Icon } from './Icon.tsx';
 
 const m = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2, minimumFractionDigits: 1 })} km` : `${Math.round(v)} m`);
 const min = (s: number) => `${Math.max(1, Math.round(s / 60))} min`;
 const signed = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v)).toLocaleString('fr-FR')} m`;
 const pct = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} %`;
+const CLS = ['smooth', 'slabs', 'pave', 'loose', 'unknown'];
+
+/** The route from start to end as a coloured ribbon: where the pavé, slabs and rails are. */
+function Ribbon({ segments }: { segments: SegmentView[] }) {
+  return (
+    <div className="ribbon" aria-hidden="true">
+      {segments.map((s, i) => (
+        <span key={i} className={`rib ${CLS[s.cls]}${s.rail ? ' rail' : ''}${s.push ? ' push' : ''}`} style={{ flexGrow: Math.max(1, s.length) }} />
+      ))}
+    </div>
+  );
+}
 
 /** Bottom panel (SPEC §9.1): selector, stats of the selected alternative, the three alternatives. */
 export function RoutePanel() {
@@ -23,16 +37,18 @@ export function RoutePanel() {
 
   if (!to) {
     return (
-      <section className="route-panel compact" ref={panel}>
-        <p className="note">Chercher une arrivée, ou appui long sur la carte pour choisir un point.</p>
+      <section className="glass panel route-panel compact" ref={panel}>
+        <p className="hint">
+          <Icon name="search" size={18} /> Chercher une arrivée, ou appui long sur la carte.
+        </p>
       </section>
     );
   }
 
   const r = routes?.find((x) => x.level === selected) ?? routes?.[0];
   return (
-    <section className="route-panel" aria-label="Itinéraire" ref={panel}>
-      <LevelSelector />
+    <section className="glass panel route-panel" aria-label="Itinéraire" ref={panel}>
+      <div className="grabber" aria-hidden="true" />
       {(status === 'locating' || status === 'computing' || engine === 'loading') && (
         <p className="note" aria-live="polite">
           {status === 'locating' ? 'Localisation…' : "Calcul de l'itinéraire…"}
@@ -53,55 +69,82 @@ export function RoutePanel() {
       )}
       {r && status !== 'error' && (
         <>
-          <div className="route-summary">
-            <strong className="big">{m(r.stats.distance)}</strong>
-            <span>{min(r.stats.duration)}</span>
-            <span className="delta">{r.level === 0 ? 'le plus court' : `${signed(r.deltaM)} (${pct(r.deltaPct)}) vs le plus court`}</span>
+          <div className="summary">
+            <div className="summary-main">
+              <span className="big">{m(r.stats.distance)}</span>
+              <span className="duration">{min(r.stats.duration)}</span>
+            </div>
+            <span className={r.level === 0 ? 'delta-pill neutral' : 'delta-pill'}>
+              {r.level === 0 ? 'le plus court' : `${signed(r.deltaM)} (${pct(r.deltaPct)}) vs le plus court`}
+            </span>
             <button type="button" className="icon-button close" aria-label="Effacer l'itinéraire" onClick={clearRoute}>
-              ×
+              <Icon name="close" />
             </button>
           </div>
-          <dl className="route-stats">
-            <div>
+          <Ribbon segments={r.segments} />
+          <dl className="stats">
+            <div className={r.stats.paveM > 0 ? 'stat pave' : 'stat'}>
               <dt>Pavé</dt>
-              <dd className={r.stats.paveM > 0 ? 'pave' : ''}>{m(r.stats.paveM)}</dd>
+              <dd>{m(r.stats.paveM)}</dd>
             </div>
-            <div>
+            <div className={r.stats.railM > 0 ? 'stat rails' : 'stat'}>
               <dt>Le long de rails</dt>
               <dd>{m(r.stats.railM)}</dd>
             </div>
-            <div>
+            <div className="stat">
               <dt>Croisements</dt>
               <dd>{r.stats.crossings}</dd>
             </div>
-            <div>
+            <div className="stat">
               <dt>À pied</dt>
               <dd>{m(r.stats.pushM)}</dd>
             </div>
           </dl>
-          <div className="alternatives" role="radiogroup" aria-label="Alternatives">
-            {routes!.map((x) => (
-              <button
-                key={x.level}
-                type="button"
-                role="radio"
-                aria-checked={x.level === selected}
-                aria-label={`${x.label} : ${m(x.stats.distance)}, ${m(x.stats.paveM)} de pavé`}
-                className={x.level === selected ? 'alt on' : 'alt'}
-                onClick={() => selectAlternative(x.level)}
-              >
-                <span className="alt-name">{x.label}</span>
-                <span className="alt-figures">
-                  {m(x.stats.distance)} · <span className={x.stats.paveM > 0 ? 'alt-pave' : 'alt-pave none'}>{m(x.stats.paveM)}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <button type="button" className="button start" onClick={() => void startTracking()}>
+          <LevelCards />
+          <button type="button" className="button primary start" onClick={() => void startTracking()}>
+            <Icon name="navigate" filled size={20} />
             Démarrer
           </button>
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * The single level choice (SPEC §9.1 selector merged with the alternatives): each card shows what
+ * that tolerance gives on this trip. Tapping one selects it, with no new calculation.
+ */
+function LevelCards() {
+  const routes = useApp((s) => s.routes);
+  const selected = useApp((s) => s.selected);
+  const status = useApp((s) => s.routeStatus);
+  return (
+    <div className="level-cards" role="radiogroup" aria-label="Tolérance au détour">
+      {LEVELS.map((l) => {
+        const x = routes?.find((r) => r.level === l.id);
+        return (
+          <button
+            key={l.id}
+            type="button"
+            role="radio"
+            aria-checked={l.id === selected}
+            aria-label={x ? `${l.label} : ${m(x.stats.distance)}, ${m(x.stats.paveM)} de pavé` : l.label}
+            className={l.id === selected ? 'alt on' : 'alt'}
+            disabled={status === 'computing' || status === 'locating'}
+            onClick={() => setLevel(l.id)}
+          >
+            <span className="alt-name">{l.label}</span>
+            {x && (
+              <>
+                <span className="alt-figures">{m(x.stats.distance)}</span>
+                <span className={x.stats.paveM > 0 ? 'alt-pave' : 'alt-pave none'}>{m(x.stats.paveM)} pavé</span>
+                <Ribbon segments={x.segments} />
+              </>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }

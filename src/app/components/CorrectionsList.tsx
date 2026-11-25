@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { CorrectionRecord } from '../../core/corrections.ts';
 import { deleteReport, exportBackup, exportGeojson, focusCorrection, focusReport, importBackup, markReportDone, removeCorrections } from '../corrections/actions.ts';
 import { useApp } from '../store.ts';
+import { Icon } from './Icon.tsx';
 
 const SURFACE_LABEL = { SMOOTH: 'Lisse', SLABS: 'Dalles', PAVE: 'Pavé' } as const;
 const STATE_LABEL = { ok: null, orphan: 'orpheline', obsolete: 'obsolète' } as const;
@@ -35,7 +36,7 @@ export function CorrectionsList() {
         <div className="sheet-head">
           <h2>Liste</h2>
           <button type="button" className="icon-button" onClick={close} aria-label="Fermer">
-            ×
+            <Icon name="close" />
           </button>
         </div>
         <div className="segmented two" role="tablist">
@@ -68,7 +69,7 @@ export function CorrectionsList() {
                     </span>
                   </button>
                   <button type="button" className="icon-button" aria-label={`Supprimer la correction ${c.name ?? ''}`} onClick={() => void removeCorrections(g.map((x) => x.id))}>
-                    ×
+                    <Icon name="trash" size={20} />
                   </button>
                 </li>
               );
@@ -87,7 +88,7 @@ export function CorrectionsList() {
                   Trié
                 </button>
                 <button type="button" className="icon-button" aria-label="Supprimer le signalement" onClick={() => void deleteReport(r.id)}>
-                  ×
+                  <Icon name="trash" size={20} />
                 </button>
               </li>
             ))}

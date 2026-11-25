@@ -3,6 +3,7 @@ import { storageStatus, totalSize } from '../../storage/dataCache.ts';
 import { checkForUpdate, startUpdate } from '../boot.ts';
 import { fmtDate, fmtMB } from '../format.ts';
 import { useApp } from '../store.ts';
+import { Icon } from './Icon.tsx';
 import { ProgressBar } from './DownloadScreen.tsx';
 
 /** "Données" screen (SPEC §8): installed vs available version, update, storage, attributions. */
@@ -28,7 +29,7 @@ export function DataSheet() {
         <div className="sheet-head">
           <h2>Données</h2>
           <button type="button" className="icon-button" onClick={close} aria-label="Fermer">
-            ×
+            <Icon name="close" />
           </button>
         </div>
 

@@ -1,5 +1,6 @@
 /** Routing actions: worker start-up, endpoints, level, route computation, favourites, long-press menu. */
 import { addFavorite, getSetting, listFavorites, pushRecent, removeFavorite, setSetting } from '../../storage/idb.ts';
+import { startCompass } from '../compass.ts';
 import { GeoError, getPosition } from '../geo.ts';
 import { type Endpoint, MY_POSITION, useApp } from '../store.ts';
 import { call } from './client.ts';
@@ -56,7 +57,8 @@ export async function computeRoute() {
     const b = await resolve(to);
     if (seq !== routeSeq) return;
     set({ routeStatus: 'computing', routeError: null });
-    const res = await call({ type: 'route', from: a, to: b, level });
+    // All four levels: the panel shows them side by side as the single level choice.
+    const res = await call({ type: 'route', from: a, to: b, level, levels: [0, 1, 2, 3] });
     if (seq !== routeSeq) return;
     if (!res.ok) {
       set({ routes: null, routeStatus: 'error', routeError: ROUTE_ERRORS[res.error] ?? res.error });
@@ -89,15 +91,15 @@ export function clearRoute() {
   set({ to: null, from: MY_POSITION, routes: null, routeStatus: 'idle', routeError: null });
 }
 
+/** One choice for the tolerance level: the four levels are already computed, so no new request. */
 export function setLevel(level: number) {
   set({ level, selected: level });
   void setSetting('level', level).catch(() => undefined);
-  void computeRoute();
+  if (!get().routes?.some((r) => r.level === level)) void computeRoute();
 }
 
-export function selectAlternative(level: number) {
-  set({ selected: level });
-}
+/** Tapping a thin line on the map selects that level, like its card. */
+export const selectAlternative = setLevel;
 
 export async function saveFavorite(name: string, lon: number, lat: number) {
   await addFavorite(name, lon, lat);
@@ -119,6 +121,43 @@ export async function openMenu(lon: number, lat: number, x: number, y: number) {
     if (m && m.lon === lon && m.lat === lat) set({ menu: { ...m, street: d?.street ?? null } });
   } catch {
     /* name is optional */
+  }
+}
+
+const FAVORITE_RADIUS_M = 30;
+
+/** Favourite at (about) the same place, if any. */
+export function favoriteAt(lon: number | undefined, lat: number | undefined) {
+  if (lon === undefined || lat === undefined) return undefined;
+  const k = Math.cos((lat * Math.PI) / 180);
+  return get().favorites.find((f) => Math.hypot((f.lon - lon) * k, f.lat - lat) * 111_195 < FAVORITE_RADIUS_M);
+}
+
+/** Star on a destination or a search result: add it to the favourites, or remove it. */
+export async function toggleFavorite(label: string, lon: number, lat: number) {
+  const existing = favoriteAt(lon, lat);
+  if (existing) {
+    await removeFavorite(existing.id);
+    set({ favorites: await listFavorites(), toast: `« ${existing.name} » retiré des favoris` });
+  } else {
+    await addFavorite(label, lon, lat);
+    set({ favorites: await listFavorites(), toast: `« ${label} » ajouté aux favoris` });
+  }
+  const msg = get().toast;
+  setTimeout(() => {
+    if (get().toast === msg) set({ toast: null });
+  }, 2200);
+}
+
+/** Locate button: centres on the user and turns the compass on (the tap allows the iOS prompt). */
+export async function locateMe() {
+  void startCompass();
+  try {
+    const fix = await getPosition();
+    set({ position: fix, flyTo: { lon: fix.lon, lat: fix.lat, zoom: 16, nonce: Date.now() } });
+  } catch (err) {
+    set({ toast: err instanceof GeoError ? err.message : 'Position introuvable.' });
+    setTimeout(() => set({ toast: null }), 3000);
   }
 }
 

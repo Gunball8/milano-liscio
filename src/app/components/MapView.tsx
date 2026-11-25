@@ -1,8 +1,9 @@
-import { type LngLatBoundsLike, MapLibreMap } from 'maplibre-gl';
+import { AttributionControl, type LngLatBoundsLike, MapLibreMap } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
 import { readDataFile } from '../../storage/dataCache.ts';
 import { registerArchive } from '../map/pmtiles.ts';
 import { REPORTS_SOURCE, SELECTION_SOURCE, SURFACE_LAYERS, SURFACE_MIN_ZOOM, SURFACE_SOURCE, EMPTY, addCorrectionLayers, setData } from '../map/correctionLayers.ts';
+import { addMeLayer, setMe } from '../map/meLayer.ts';
 import { ALT_HIT_LAYER, addRouteLayers, keepRouteLayers, routeData, setRouteData } from '../map/routeLayers.ts';
 import { PMTILES_NAME, buildStyle } from '../map/style.ts';
 import { selectEdgeAt } from '../corrections/actions.ts';
@@ -20,8 +21,15 @@ function pointsOf(s: AppState) {
   const at = (e: AppState['from'] | null) =>
     e?.kind === 'place' && e.lon !== undefined && e.lat !== undefined ? ([e.lon, e.lat] as [number, number]) : null;
   const me = s.position ? ([s.position.lon, s.position.lat] as [number, number]) : null;
-  if (s.mode === 'tracking') return { from: null, to: at(s.to), me };
-  return { from: at(s.from) ?? (s.from.kind === 'position' && s.routes ? me : null), to: at(s.to), me };
+  if (s.mode === 'tracking') return { from: null, to: at(s.to) };
+  return { from: at(s.from) ?? (s.from.kind === 'position' && s.routes ? me : null), to: at(s.to) };
+}
+
+/** Arrow where the phone points (compass); while tracking without compass, the course. */
+function pushMe(map: MapLibreMap) {
+  const s = useApp.getState();
+  const heading = s.compass ?? (s.mode === 'tracking' ? (s.tracking?.course ?? null) : null);
+  setMe(map, s.position ? [s.position.lon, s.position.lat] : null, heading);
 }
 
 function pushRoute(map: MapLibreMap) {
@@ -155,16 +163,19 @@ export function MapView() {
             [w - BOUNDS_PAD, s - BOUNDS_PAD],
             [e + BOUNDS_PAD, n + BOUNDS_PAD],
           ],
-          attributionControl: { compact: true },
+          attributionControl: false, // added bottom-left below: the right side holds the locate button
           dragRotate: false,
           pitchWithRotate: false,
         });
         map.touchZoomRotate.disableRotation();
+        map.addControl(new AttributionControl({ compact: true }), 'bottom-left');
         const m = map;
         m.on('load', () => {
           addRouteLayers(m, schemeRef.current);
           addCorrectionLayers(m);
+          addMeLayer(m);
           pushRoute(m);
+          pushMe(m);
           pushSelection(m);
           void refreshSurface(m);
           fitRoutes(m);
@@ -209,6 +220,8 @@ export function MapView() {
         const m = mapRef.current;
         if (!m || !m.getSource('liscio-route')) return;
         if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.position !== prev.position || s.mode !== prev.mode) pushRoute(m);
+        if (s.position !== prev.position || s.compass !== prev.compass || s.tracking?.course !== prev.tracking?.course || s.mode !== prev.mode) pushMe(m);
+        if (s.flyTo && s.flyTo !== prev.flyTo) m.flyTo({ center: [s.flyTo.lon, s.flyTo.lat], zoom: s.flyTo.zoom, duration: 600 });
         if (s.mode !== prev.mode || s.surfaceLayer !== prev.surfaceLayer || s.surfaceKey !== prev.surfaceKey || s.engine !== prev.engine) void refreshSurface(m);
         if (s.mode !== prev.mode || s.selectedEdge !== prev.selectedEdge || s.street !== prev.street || s.reports !== prev.reports) pushSelection(m);
         if (s.focusReport && s.focusReport !== prev.focusReport) m.flyTo({ center: [s.focusReport.lon, s.focusReport.lat], zoom: 17, duration: 600 });
@@ -240,10 +253,12 @@ export function MapView() {
     const m = mapRef.current;
     if (!m) return;
     m.once('style.load', () => {
-      for (const id of ['lr-alt', 'lr-rail', 'lr-casing', 'lr-main', 'lr-push', 'lr-me', 'lr-ends', ALT_HIT_LAYER]) if (m.getLayer(id)) m.removeLayer(id);
+      for (const id of ['lr-alt', 'lr-rail', 'lr-casing', 'lr-main', 'lr-push', 'lr-ends', ALT_HIT_LAYER]) if (m.getLayer(id)) m.removeLayer(id);
       addRouteLayers(m, scheme);
       addCorrectionLayers(m);
+      addMeLayer(m);
       pushRoute(m);
+      pushMe(m);
       pushSelection(m);
       void refreshSurface(m);
     });

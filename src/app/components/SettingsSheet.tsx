@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_FACTORS } from '../../core/cost.ts';
 import { savePrefs } from '../corrections/actions.ts';
 import { useApp } from '../store.ts';
+import { Icon } from './Icon.tsx';
 import { DEFAULT_PREFS, type Prefs } from '../../worker/protocol.ts';
 
 const FACTORS: [keyof Prefs['factors'], string][] = [
@@ -36,7 +37,7 @@ export function SettingsSheet() {
         <div className="sheet-head">
           <h2>Réglages</h2>
           <button type="button" className="icon-button" onClick={close} aria-label="Fermer">
-            ×
+            <Icon name="close" />
           </button>
         </div>
         <label className="slider">

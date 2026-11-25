@@ -3,6 +3,7 @@ import { loadCorrectionData } from '../corrections/actions.ts';
 import { initEngine, loadPreferences } from '../routing/actions.ts';
 import { useApp } from '../store.ts';
 import { ContextMenu } from './ContextMenu.tsx';
+import { LocateButton } from './LocateButton.tsx';
 import { CorrectionsList } from './CorrectionsList.tsx';
 import { CorrectionsScreen } from './CorrectionsScreen.tsx';
 import { DataSheet } from './DataSheet.tsx';
@@ -37,6 +38,7 @@ export function MapScreen() {
       {mode === 'map' && (
         <>
           <SearchPanel />
+          <LocateButton />
           <RoutePanel />
           <ContextMenu />
           {searchField && <SearchSheet />}

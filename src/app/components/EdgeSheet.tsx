@@ -3,6 +3,7 @@ import type { CorrectedSurface } from '../../core/corrections.ts';
 import { applyCorrection, restoreOsm, setWholeStreet } from '../corrections/actions.ts';
 import { call } from '../routing/client.ts';
 import { useApp } from '../store.ts';
+import { Icon } from './Icon.tsx';
 
 const CLASS_LABEL = ['Lisse', 'Dalles', 'Pavé', 'Meuble', 'Inconnu'];
 const CHOICES: [CorrectedSurface, number, string][] = [
@@ -34,7 +35,7 @@ export function EdgeSheet({ panelRef }: { panelRef?: RefObject<HTMLElement | nul
       <div className="sheet-head">
         <h2>{e.name ?? 'Tronçon sans nom'}</h2>
         <button type="button" className="icon-button" aria-label="Fermer la fiche" onClick={() => useApp.setState({ selectedEdge: null, street: null })}>
-          ×
+          <Icon name="close" />
         </button>
       </div>
       <p className="note">

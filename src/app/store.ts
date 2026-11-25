@@ -36,6 +36,8 @@ export interface TrackingState {
   following: boolean;
   /** Map bearing, from the course when faster than 2 m/s. */
   bearing: number;
+  /** Course over ground when known (moving), for the position arrow. */
+  course: number | null;
   reports: number;
   error: string | null;
 }
@@ -96,6 +98,12 @@ export interface AppState {
   toast: string | null;
   /** Zoomed in enough for the surface layer. */
   surfaceZoomOk: boolean;
+
+  // ---- design refresh
+  /** Where the phone points (degrees from north), null without compass. */
+  compass: number | null;
+  /** One-off camera request (locate button); nonce makes repeated taps count. */
+  flyTo: { lon: number; lat: number; zoom: number; nonce: number } | null;
 }
 
 export const useApp = create<AppState>(() => ({
@@ -135,6 +143,8 @@ export const useApp = create<AppState>(() => ({
   focusReport: null,
   toast: null,
   surfaceZoomOk: true,
+  compass: null,
+  flyTo: null,
 }));
 
 // Exposed for end-to-end tests and debugging from the console.

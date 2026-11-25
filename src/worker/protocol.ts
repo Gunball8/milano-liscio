@@ -15,6 +15,8 @@ export interface SegmentView {
   cls: number;
   push: boolean;
   rail: boolean;
+  /** Meters, for the route ribbon. */
+  length: number;
 }
 
 export interface RouteView {
@@ -61,7 +63,7 @@ export interface EdgeInfo {
 export type Request =
   | { type: 'init'; version: string }
   | { type: 'search'; query: string; limit?: number }
-  | { type: 'route'; from: LngLatPoint; to: LngLatPoint; level: number }
+  | { type: 'route'; from: LngLatPoint; to: LngLatPoint; level: number; /** default: 0, level, 3 */ levels?: number[] }
   | { type: 'describe'; point: LngLatPoint }
   | { type: 'setOptions'; prefs: Prefs }
   | { type: 'setCorrections'; corrections: CorrectionRecord[] }

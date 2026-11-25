@@ -60,3 +60,6 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Attribution links open in a new tab: in the installed app a plain link would replace the map.
 - File export: iOS share sheet when it accepts files, else a download; e2e forces the download path with localStorage `liscio.downloadOnly`.
 - Published at https://gunball8.github.io/milano-liscio/ (public repo, gh-pages branch rewritten on each deploy). Never push tags: a local backup tag points to pre-publication history.
+- Design (2026-11-25): tokens and glass surfaces in `src/app/styles.css`, icons in `components/Icon.tsx`. One level choice: four cards (all four levels computed per request, ~2 ms more) instead of the brief's selector + alternatives, which users found redundant.
+- Position marker: `map/meLayer.ts`, arrow turned by the compass (`app/compass.ts`, permission asked from a tap: locate button or Démarrer), else by the course while tracking; dot when no direction. Chromium also has `DeviceOrientationEvent.requestPermission`, so tests grant accelerometer/gyroscope/magnetometer.
+- Map attribution is bottom-left (the locate button is bottom-right).

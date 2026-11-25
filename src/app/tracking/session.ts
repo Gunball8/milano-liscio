@@ -6,6 +6,7 @@
 import { type WakeLockLike, ScreenLock } from '../../core/screenLock.ts';
 import { ARRIVAL_M, GOOD_ACCURACY_M, OffRouteDetector, ROTATE_ABOVE_MPS, RouteTracker, courseFrom } from '../../core/tracking.ts';
 import { addReport, listReports } from '../../storage/idb.ts';
+import { startCompass } from '../compass.ts';
 import { call } from '../routing/client.ts';
 import { type TrackingState, useApp } from '../store.ts';
 
@@ -66,7 +67,16 @@ function onFix(p: GeolocationPosition) {
   // One update for position and course, so the map never follows a position with the previous bearing.
   set({
     position: { lon: fix.lon, lat: fix.lat, accuracy },
-    tracking: { ...t, ...progressPatch(), offset: loc.offset, accuracy, imprecise: accuracy >= GOOD_ACCURACY_M, bearing, error: null },
+    tracking: {
+      ...t,
+      ...progressPatch(),
+      offset: loc.offset,
+      accuracy,
+      imprecise: accuracy >= GOOD_ACCURACY_M,
+      bearing,
+      course: course.heading !== null && course.speed !== null && course.speed > ROTATE_ABOVE_MPS ? course.heading : t.course,
+      error: null,
+    },
   });
 
   if (tracker.distanceToEnd(fix.lon, fix.lat) < ARRIVAL_M) {
@@ -82,7 +92,7 @@ async function recalculate(from: { lon: number; lat: number }) {
   recalculating = true;
   patch({ recalculating: true });
   try {
-    const res = await call({ type: 'route', from, to: { lon: to.lon, lat: to.lat }, level: selected });
+    const res = await call({ type: 'route', from, to: { lon: to.lon, lat: to.lat }, level: selected, levels: [selected] });
     if (get().mode !== 'tracking') return;
     if (!res.ok) {
       patch({ error: res.error === 'start-off-network' ? 'Hors du réseau cyclable : recalcul impossible ici.' : 'Recalcul impossible.' });
@@ -108,6 +118,7 @@ function arrive() {
 }
 
 export async function startTracking() {
+  void startCompass(); // inside the "Démarrer" tap, for the iOS permission prompt
   const s = get();
   const route = s.routes?.find((r) => r.level === s.selected);
   if (!route) return;
@@ -132,6 +143,7 @@ export async function startTracking() {
       lock: 'off',
       following: true,
       bearing: 0,
+      course: null,
       reports: 0,
       error: null,
     },

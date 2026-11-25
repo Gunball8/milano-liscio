@@ -12,8 +12,8 @@ export const ALT_HIT_LAYER = 'lr-alt-hit';
 const PREFIX = 'lr-';
 
 const COLORS = {
-  light: { neutral: '#24323f', casing: '#ffffff', alt: '#5f6f7f', me: '#1c7ed6' },
-  dark: { neutral: '#e3e9ee', casing: '#0d1311', alt: '#9aa8b4', me: '#4dabf7' },
+  light: { neutral: '#2b5f8a', casing: '#ffffff', alt: '#8a97a3' },
+  dark: { neutral: '#9cc9f0', casing: '#0d1311', alt: '#7d8b96' },
 };
 const PAVE = '#d6336c';
 const SLABS = '#f08c00';
@@ -22,12 +22,13 @@ const RAIL = '#8b5cf6';
 export interface RoutePoints {
   from: [number, number] | null;
   to: [number, number] | null;
-  me: [number, number] | null;
 }
 
 export function routeData(routes: RouteView[] | null, selected: number, points: RoutePoints): FeatureCollection {
   const features: FeatureCollection['features'] = [];
+  // Selected level in colour; levels 0 and 3 as thin comparison lines (SPEC §9.1).
   for (const r of routes ?? []) {
+    if (r.level !== selected && r.level !== 0 && r.level !== 3) continue;
     if (r.level === selected) {
       for (const s of r.segments) {
         features.push({ type: 'Feature', properties: { role: 'main', cls: s.cls, push: s.push ? 1 : 0, rail: s.rail ? 1 : 0 }, geometry: { type: 'LineString', coordinates: s.coords } });
@@ -56,7 +57,6 @@ export function addRouteLayers(map: MapLibreMap, scheme: Scheme) {
     { id: 'lr-casing', type: 'line', source: ROUTE_SOURCE, filter: role('main'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': c.casing, 'line-width': width(8) } },
     { id: 'lr-main', type: 'line', source: ROUTE_SOURCE, filter: ['all', role('main'), ['==', ['get', 'push'], 0]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': clsColor, 'line-width': width(5) } },
     { id: 'lr-push', type: 'line', source: ROUTE_SOURCE, filter: ['all', role('main'), ['==', ['get', 'push'], 1]], paint: { 'line-color': clsColor, 'line-width': width(5), 'line-dasharray': [0.4, 1.6] } },
-    { id: 'lr-me', type: 'circle', source: ROUTE_SOURCE, filter: role('me'), paint: { 'circle-radius': 7, 'circle-color': c.me, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } },
     { id: 'lr-ends', type: 'circle', source: ROUTE_SOURCE, filter: ['any', role('from'), role('to')], paint: { 'circle-radius': 8, 'circle-color': ['match', ['get', 'role'], 'from', '#2f9e44', c.neutral] as unknown as string, 'circle-stroke-color': c.casing, 'circle-stroke-width': 3 } },
   ];
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);

@@ -41,6 +41,13 @@ test('tracking: progress, off-route recalculation, imprecise GPS, report, arriva
     last = t.remainingM;
   }
   expect((await appState(page)).tracking!.recalcs).toBe(0);
+  // The position arrow points along the course while riding (no compass in the test browser).
+  const arrow = await page.evaluate(() => {
+    const m = (window as unknown as { __map: { querySourceFeatures(s: string): { properties: { heading: number } }[] } }).__map;
+    return m.querySourceFeatures('liscio-me')[0]?.properties.heading ?? null;
+  });
+  expect(arrow).not.toBeNull();
+  expect(arrow!).toBeGreaterThanOrEqual(0);
   // Fixes 60+ m apart in about a second: well above 2 m/s, so the map turns with the course.
   const course = (await appState(page)).tracking!.bearing;
   expect(course).not.toBe(0);
