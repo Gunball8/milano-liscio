@@ -49,12 +49,12 @@ try {
     for (const f of new Set([...oldSw.matchAll(/assets\/[A-Za-z0-9._-]+/g)].map((x) => x[0]))) {
       const dest = path.join(tmp, f);
       if (existsSync(dest)) continue;
-      writeFileSync(dest, execFileSync('git', ['show', `FETCH_HEAD:${f}`], { cwd: ROOT }));
+      writeFileSync(dest, execFileSync('git', ['show', `FETCH_HEAD:${f}`], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }));
       kept++;
     }
     console.log(`kept ${kept} asset(s) of the previous version`);
-  } catch {
-    console.log('no previous version to keep (first deploy)');
+  } catch (err) {
+    console.log(`previous version's assets not kept: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
   }
   sh('git', ['init', '-q', '-b', 'gh-pages'], tmp);
   sh('git', ['add', '-A'], tmp);
