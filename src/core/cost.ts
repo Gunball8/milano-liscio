@@ -3,9 +3,15 @@
  *   cost(arc) = L × pushFactor + L × surfacePenalty[class] + railLen × railPenalty + shallowCrossings × crossingMeters
  * Every factor is ≥ 1 per meter, so the straight-line distance is an admissible A* heuristic.
  */
-import { FLAG_CLASS_MASK, FLAG_PUSH, type Graph, arcEdgeIndex, findArc } from './graph.ts';
+import { FLAG_CLASS_MASK, FLAG_CONTRA, FLAG_PUSH, type Graph, arcEdgeIndex, findArc } from './graph.ts';
 
 export const PUSH_FACTOR = 3.5;
+/**
+ * Light preference for the right direction (owner's choice, 2026-11-25): an arc against a oneway costs
+ * 10 % more. Nothing is forbidden; on 300 trips wrong-way riding drops from ~21 % to ~2 % of each route
+ * for +10 m on average, with the same pavé.
+ */
+export const CONTRA_FACTOR = 1.1;
 
 export interface Penalties {
   /** Extra meters per meter, indexed by surface code: SMOOTH, SLABS, PAVE, LOOSE, UNKNOWN. */
@@ -80,7 +86,8 @@ export function effectiveArc(g: Graph, arc: number, corrections?: Corrections): 
 export function arcCost(g: Graph, arc: number, p: Penalties, corrections?: Corrections, opts: CostOptions = {}): number {
   const { cls, rail, length, push } = effectiveArc(g, arc, corrections);
   if (push && opts.allowPush === false) return Infinity;
-  return length * (push ? PUSH_FACTOR : 1) + length * p.surface[cls as 0 | 1 | 2 | 3 | 4] + rail * p.rail + g.arcCross[arc]! * p.crossing;
+  const base = length * (push ? PUSH_FACTOR : 1) + length * p.surface[cls as 0 | 1 | 2 | 3 | 4] + rail * p.rail + g.arcCross[arc]! * p.crossing;
+  return (g.arcFlags[arc]! & FLAG_CONTRA) !== 0 ? base * CONTRA_FACTOR : base;
 }
 
 /**
@@ -116,7 +123,8 @@ export function computeArcCostsMulti(g: Graph, list: readonly Penalties[], corre
     const cls = flags & FLAG_CLASS_MASK;
     const r = arcRail[a]!;
     const x = arcCross[a]!;
-    for (let j = 0; j < k; j++) outs[j]![a] = base + L * surface[j * 8 + cls]! + r * rail[j]! + x * crossing[j]!;
+    const f = (flags & FLAG_CONTRA) !== 0 ? CONTRA_FACTOR : 1;
+    for (let j = 0; j < k; j++) outs[j]![a] = (base + L * surface[j * 8 + cls]! + r * rail[j]! + x * crossing[j]!) * f;
   }
   if (corrections && corrections.size > 0) {
     for (const e of corrections.keys()) {

@@ -64,6 +64,7 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
   it('invariants between levels 0 and 3 on 200 random pairs', { timeout: 120_000 }, () => {
     const unexplained: string[] = [];
     let shorterByPushing = 0;
+    let shorterByWrongWay = 0;
     let morePave = 0;
     for (const [i, [a, b]] of pairs.entries()) {
       const r0 = router.search(costs[0]!, a, b);
@@ -73,17 +74,19 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
       const s3 = assembleRoute(g, r3).stats;
       // Exact invariant: level 0 is optimal for its own cost, so the level-3 route cannot beat it there.
       expect(costAlong(r3, costs[0]!)).toBeGreaterThanOrEqual(r0.cost - EPS);
-      // SPEC wording "distance(level 3) ≥ distance(level 0)": holds unless level 3 walks more (push ×3.5).
+      // SPEC wording "distance(level 3) ≥ distance(level 0)": holds unless level 3 walks more (push ×3.5)
+      // or rides more against oneways (×1.1): level 0 pays those metres more than it saves.
       if (s3.distance < s0.distance - EPS) {
         if (s3.pushM > s0.pushM) shorterByPushing++;
-        else unexplained.push(`pair ${i}: level 3 shorter (${s3.distance.toFixed(0)} < ${s0.distance.toFixed(0)}) without more pushing`);
+        else if (s3.contraM > s0.contraM) shorterByWrongWay++;
+        else unexplained.push(`pair ${i}: level 3 shorter (${s3.distance.toFixed(0)} < ${s0.distance.toFixed(0)}) without more pushing or wrong way`);
       }
       if (s3.paveM > s0.paveM + EPS) {
         morePave++;
         unexplained.push(`pair ${i}: level 3 has more pavé (${s3.paveM.toFixed(0)} > ${s0.paveM.toFixed(0)})`);
       }
     }
-    console.log(`invariants: ${shorterByPushing} pairs where level 3 is shorter because it walks more, ${morePave} with more pavé`);
+    console.log(`invariants: level 3 shorter because it walks more ${shorterByPushing}, rides more wrong way ${shorterByWrongWay}; ${morePave} with more pavé`);
     expect(unexplained).toEqual([]);
   });
 
