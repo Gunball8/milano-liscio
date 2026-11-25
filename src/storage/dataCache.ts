@@ -1,7 +1,8 @@
 /**
  * Offline data (SPEC §8): the app downloads the files listed in data/manifest.json itself, with
  * progress, checks size and SHA-256, and stores them in a cache named data-<version>. A version is
- * usable only once a completion marker is written; older caches are deleted after that.
+ * usable only once a completion marker is written; older caches are deleted after that. A file that
+ * did not change (same name, size and SHA-256 in an installed version) is copied, not downloaded.
  */
 
 export interface DataFile {
@@ -69,9 +70,37 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** The same file (name, size, SHA-256) stored by another fully installed version, if any. */
+async function storedElsewhere(f: DataFile, version: string): Promise<Response | null> {
+  for (const name of await caches.keys()) {
+    if (!name.startsWith(CACHE_PREFIX) || name === cacheName(version)) continue;
+    const cache = await caches.open(name);
+    const marker = await cache.match(completeUrl);
+    if (!marker) continue;
+    const other = (await marker.json()) as DataManifest;
+    if (!other.files.some((x) => x.name === f.name && x.size === f.size && x.sha256 === f.sha256)) continue;
+    const hit = await cache.match(dataUrl(f.name, other.version));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Bytes an update to `m` will really download: files already on the phone are not counted. */
+export async function pendingTransfer(m: DataManifest): Promise<number> {
+  if (!('caches' in globalThis)) return transferSize(m);
+  const own = await caches.open(cacheName(m.version));
+  let bytes = 0;
+  for (const f of m.files) {
+    if ((await own.match(dataUrl(f.name, m.version))) || (await storedElsewhere(f, m.version))) continue;
+    bytes += f.transfer ?? f.size;
+  }
+  return bytes;
+}
+
 /**
  * Downloads every file of a version into its cache. Files already stored (interrupted earlier
- * download) are kept. Throws on network error or checksum mismatch; the previous version stays usable.
+ * download) are kept, unchanged files of an installed version are copied. Throws on network error or
+ * checksum mismatch; the previous version stays usable.
  */
 export async function downloadVersion(m: DataManifest, onProgress: (p: Progress) => void, signal?: AbortSignal): Promise<void> {
   const cache = await caches.open(cacheName(m.version));
@@ -83,6 +112,16 @@ export async function downloadVersion(m: DataManifest, onProgress: (p: Progress)
       done += f.size;
       onProgress({ loaded: done, total, file: f.name });
       continue;
+    }
+    const same = await storedElsewhere(f, m.version);
+    if (same) {
+      const blob = await same.blob();
+      if (blob.size === f.size) {
+        await cache.put(url, new Response(blob, { headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(f.size) } }));
+        done += f.size;
+        onProgress({ loaded: done, total, file: f.name });
+        continue;
+      }
     }
     const res = await fetch(url, { cache: 'no-store', signal });
     if (!res.ok || !res.body) throw new Error(`${f.name} : HTTP ${res.status}`);

@@ -9,9 +9,11 @@ export interface TrackSegment {
   cls: number;
   push: boolean;
   rail: boolean;
+  /** Against a oneway: announced first, it is a safety alert. */
+  contra?: boolean;
 }
 
-export type StretchKind = 'pave' | 'rails' | 'slabs' | 'push';
+export type StretchKind = 'contra' | 'pave' | 'rails' | 'slabs' | 'push';
 
 export interface NextStretch {
   kinds: StretchKind[];
@@ -37,8 +39,9 @@ export const ARRIVAL_M = 25;
 const WINDOW_BACK_M = 40;
 const WINDOW_AHEAD_M = 400;
 
-const kindsOf = (s: { cls: number; push: boolean; rail: boolean }): StretchKind[] => {
+const kindsOf = (s: { cls: number; push: boolean; rail: boolean; contra?: boolean }): StretchKind[] => {
   const k: StretchKind[] = [];
+  if (s.contra) k.push('contra');
   if (s.cls === 2) k.push('pave');
   if (s.rail) k.push('rails');
   if (s.cls === 1) k.push('slabs');

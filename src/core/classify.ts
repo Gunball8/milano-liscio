@@ -142,6 +142,40 @@ export function directionalAccess(tags: Tags): DirectionalAccess {
   return { forward: m, backward: m };
 }
 
+/** 1: oneway along the way, -1: against it, 0: two-way (for bikes). */
+export function onewayForBikes(tags: Tags): 1 | -1 | 0 {
+  const bike = tags['oneway:bicycle'];
+  if (bike === 'no') return 0;
+  const v = bike ?? tags['oneway'];
+  if (v === 'yes' || v === '1' || v === 'true') return 1;
+  if (v === '-1' || v === 'reverse') return -1;
+  if (v === 'no' || v === 'false' || v === '0') return 0;
+  if (tags['junction'] === 'roundabout' || tags['junction'] === 'circular') return 1;
+  return 0;
+}
+
+const OPPOSITE_KEYS = ['cycleway', 'cycleway:left', 'cycleway:right', 'cycleway:both'];
+
+/** Contraflow cycling explicitly allowed (`cycleway*=opposite*` or a contraflow lane). */
+export function contraflowAllowed(tags: Tags): boolean {
+  for (const k of OPPOSITE_KEYS) {
+    if ((tags[k] ?? '').startsWith('opposite')) return true;
+    const ow = tags[`${k}:oneway`];
+    if (k !== 'cycleway' && (ow === '-1' || ow === 'no')) return true;
+  }
+  return false;
+}
+
+/**
+ * True when riding the way in this direction goes against a oneway that applies to bikes. Not a
+ * restriction (pedestrian rules): the route keeps it, tracking announces it ("Contresens").
+ */
+export function isWrongWay(tags: Tags, reversed: boolean): boolean {
+  const ow = onewayForBikes(tags);
+  if (ow === 0 || contraflowAllowed(tags)) return false;
+  return ow === 1 ? reversed : !reversed;
+}
+
 /** Barriers a bike cannot get through, whatever the access tags. */
 const ALWAYS_BLOCKING = new Set(['turnstile', 'full-height_turnstile', 'stile', 'kissing_gate', 'fence', 'wall', 'wire_fence', 'retaining_wall', 'hedge']);
 /** Barriers that close a passage when access is restricted (gates and similar). */

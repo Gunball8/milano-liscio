@@ -129,3 +129,21 @@ Effet sur 300 trajets aléatoires de 1,5 à 5 km à vol d'oiseau (centre et proc
 À noter :
 - **Trottoirs** : 72 % sont renseignés en asphalte et 4 % en dalles ou en pavé. Les 23 % sans revêtement indiqué gardent la pénalité « inconnu ».
 - **Bordures** : les bordures (`kerb`) restent franchissables ; un trottoir peut donc imposer de monter ou descendre une bordure.
+
+## Alerte contresens (25 novembre 2026)
+
+Chaque portion prise à contresens d'un sens unique qui s'applique aux vélos est marquée dans le graphe (2 103 km de portions). Ne sont pas comptés :
+- les contresens cyclables autorisés (`oneway:bicycle=no`, bandes à contresens) ;
+- les trottoirs, qui n'ont pas de sens.
+
+Ces portions ne sont pas pénalisées, l'itinéraire les garde. Pendant le trajet, le bandeau les annonce en premier, avec un panneau sens interdit : « Contresens dans 120 m, sur 200 m ». Avant le départ, le panneau de l'itinéraire affiche les mètres de contresens.
+
+Mesure sur 300 trajets aléatoires : environ 21 % de chaque itinéraire est à contresens (850 m en moyenne, 3 à 4 portions par trajet). Le moteur n'a aucune préférence de sens et prend le contresens dès qu'il gagne quelques mètres.
+
+| Contresens compté | Contresens par trajet | Distance | Pavé |
+|---|---|---|---|
+| ×1 (actuel) | ~850 m | 3,89 à 4,07 km | inchangé |
+| ×1,1 | 60 à 110 m | +10 m | inchangé |
+| ×1,25 | 20 à 50 m | +20 m | inchangé |
+
+Mises à jour des données : un fichier identique (même nom, taille et empreinte SHA-256) est désormais copié depuis la version installée au lieu d'être retéléchargé. L'écran Données affiche ce qui sera réellement téléchargé. Quand seul le graphe change, la mise à jour fait environ 9 Mo au lieu de 32.

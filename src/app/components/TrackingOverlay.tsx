@@ -5,7 +5,7 @@ import { useApp } from '../store.ts';
 import { usePanelHeight } from '../usePanelHeight.ts';
 import { Icon } from './Icon.tsx';
 
-const KIND_LABEL: Record<StretchKind, string> = { pave: 'pavé', rails: 'rails', slabs: 'dalles', push: 'à pied' };
+const KIND_LABEL: Record<StretchKind, string> = { contra: 'contresens', pave: 'pavé', rails: 'rails', slabs: 'dalles', push: 'à pied' };
 const m10 = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km` : `${Math.max(10, Math.round(v / 10) * 10)} m`);
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 

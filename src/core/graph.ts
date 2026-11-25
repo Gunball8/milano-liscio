@@ -14,9 +14,11 @@ export const GRAPH_MAGIC = 0x4d4c4752; // "MLGR"
 export const GRAPH_VERSION = 2;
 export const COORD_SCALE = 1e7;
 
-/** arcFlags bits: surface class code in bits 0–2, push in bit 3. */
+/** arcFlags bits: surface class code in bits 0–2, push in bit 3, wrong way (against a oneway) in bit 4. */
 export const FLAG_CLASS_MASK = 0b0111;
 export const FLAG_PUSH = 0b1000;
+/** Ridden against a oneway that applies to bikes: allowed (pedestrian rules), announced while riding. */
+export const FLAG_CONTRA = 0b10000;
 
 export interface GraphHeader {
   version: number;

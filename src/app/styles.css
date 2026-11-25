@@ -25,6 +25,7 @@
   --pave: #d6336c;
   --slabs: #f08c00;
   --rails: #8b5cf6;
+  --contra: #e03131;
   --unknown: #a3aaa6;
   --blue: #1a73e8;
   --danger: #c92a2a;
@@ -806,6 +807,10 @@ svg {
   color: var(--rails);
 }
 
+.stat.contra dd {
+  color: var(--contra);
+}
+
 .level-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1091,6 +1096,24 @@ details summary {
 
 .nav-chip.rails {
   background: var(--rails);
+}
+
+/* "no entry" sign: red disc, white bar */
+.nav-chip.contra {
+  border-radius: 50%;
+  background: var(--contra);
+  position: relative;
+}
+
+.nav-chip.contra::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 5.5px;
+  height: 3px;
+  border-radius: 1px;
+  background: #ffffff;
 }
 
 .nav-chip.push {

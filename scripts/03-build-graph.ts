@@ -16,13 +16,14 @@ import {
   SURFACE_CODE,
   type Tags,
   directionalAccess,
+  isWrongWay,
   effectiveSurface,
   hasTaggedRails,
   isArea,
   isCarriageway,
   isPresentRail,
 } from '../src/core/classify.ts';
-import { COORD_SCALE, FLAG_PUSH, type GraphArrays, serializeGraph } from '../src/core/graph.ts';
+import { COORD_SCALE, FLAG_CONTRA, FLAG_PUSH, type GraphArrays, serializeGraph } from '../src/core/graph.ts';
 import { keepTag, serializeWayTags } from '../src/core/waytags.ts';
 import { splitIntoEdges } from './lib/edges.ts';
 import { type OsmWay, readRaw, readTiles } from './lib/osm.ts';
@@ -156,7 +157,7 @@ async function main() {
   const coordLon = new Int32Array(coordCount);
   const coordLat = new Int32Array(coordCount);
 
-  const stats = { railMarkedM: 0, taggedRailM: 0, crossings: 0, rideM: 0, pushM: 0, byClass: new Map<string, number>() };
+  const stats = { railMarkedM: 0, taggedRailM: 0, crossings: 0, rideM: 0, pushM: 0, contraM: 0, byClass: new Map<string, number>() };
   let c = 0;
   mainEdges.forEach((e, ei) => {
     const k = kept[e.wayIdx]!;
@@ -196,11 +197,13 @@ async function main() {
     const addArc = (mode: BikeMode, reversed: boolean) => {
       if (mode === 'excluded') return;
       const cls = effectiveSurface(k.tags, reversed ? 'backward' : 'forward').cls;
+      const contra = isWrongWay(k.tags, reversed);
+      if (contra) stats.contraM += e.length;
       arcs.push({
         from: reversed ? to : from,
         to: reversed ? from : to,
         edge: reversed ? ~ei : ei,
-        flags: SURFACE_CODE[cls] | (mode === 'push' ? FLAG_PUSH : 0),
+        flags: SURFACE_CODE[cls] | (mode === 'push' ? FLAG_PUSH : 0) | (contra ? FLAG_CONTRA : 0),
         rail: Math.min(65535, Math.round(rail)),
         cross: Math.min(255, cross),
       });
@@ -316,7 +319,7 @@ async function main() {
   const mb = bin.byteLength / 1e6;
   console.log(`nodes ${nodeCount}, arcs ${arcs.length}, edges ${mainEdges.length}, coords ${coordCount}, ways ${graphWays.length}, names ${names.length}`);
   console.log(
-    `arc km: ride ${(stats.rideM / 1000).toFixed(0)}, push ${(stats.pushM / 1000).toFixed(0)}; by class ${SURFACE_CLASSES.map((k) => `${k} ${((stats.byClass.get(k) ?? 0) / 1000).toFixed(0)}`).join(', ')}`,
+    `arc km: ride ${(stats.rideM / 1000).toFixed(0)}, push ${(stats.pushM / 1000).toFixed(0)}, wrong way ${(stats.contraM / 1000).toFixed(0)}; by class ${SURFACE_CLASSES.map((k) => `${k} ${((stats.byClass.get(k) ?? 0) / 1000).toFixed(0)}`).join(', ')}`,
   );
   console.log(
     `rails: ${(stats.railMarkedM / 1000).toFixed(1)} km on edges (of which tagged ${(stats.taggedRailM / 1000).toFixed(1)} km), shallow crossings ${stats.crossings}`,

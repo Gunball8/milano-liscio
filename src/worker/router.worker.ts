@@ -57,7 +57,7 @@ function route(req: Extract<Request, { type: 'route' }>) {
       stats: r.route.stats,
       deltaM: r.deltaM,
       deltaPct: r.deltaPct,
-      segments: r.route.segments.map((s) => ({ coords: s.coords, cls: s.cls, push: s.push, rail: s.rail, length: s.length })),
+      segments: r.route.segments.map((s) => ({ coords: s.coords, cls: s.cls, push: s.push, rail: s.rail, contra: s.contra, length: s.length })),
     })),
     from: { lon: res.from.lon, lat: res.from.lat, dist: res.from.dist },
     to: { lon: res.to.lon, lat: res.to.lat, dist: res.to.dist },

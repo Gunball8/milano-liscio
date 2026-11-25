@@ -5,7 +5,7 @@
 import type { PathPiece, SearchResult } from './astar.ts';
 import { type Corrections, effectiveArc } from './cost.ts';
 import { MILAN_PROJECTION as P } from './geo.ts';
-import { type Graph, arcEdgeIndex, arcReversed, edgeLngLats } from './graph.ts';
+import { FLAG_CONTRA, type Graph, arcEdgeIndex, arcReversed, edgeLngLats } from './graph.ts';
 
 export type LngLat = [number, number];
 
@@ -15,6 +15,8 @@ export interface RouteSegment {
   cls: number;
   push: boolean;
   rail: boolean;
+  /** Against a oneway (allowed, announced while riding). */
+  contra: boolean;
   length: number;
 }
 
@@ -27,6 +29,8 @@ export interface RouteStats {
   slabsM: number;
   railM: number;
   pushM: number;
+  /** Meters against a oneway. */
+  contraM: number;
   crossings: number;
 }
 
@@ -73,7 +77,7 @@ export function arcSubline(g: Graph, arc: number, t0: number, t1: number): LngLa
 }
 
 export function assembleRoute(g: Graph, result: SearchResult, corrections?: Corrections, speeds: Speeds = DEFAULT_SPEEDS): Route {
-  const stats: RouteStats = { cost: result.cost, distance: 0, duration: 0, paveM: 0, slabsM: 0, railM: 0, pushM: 0, crossings: 0 };
+  const stats: RouteStats = { cost: result.cost, distance: 0, duration: 0, paveM: 0, slabsM: 0, railM: 0, pushM: 0, contraM: 0, crossings: 0 };
   const segments: RouteSegment[] = [];
   const polyline: LngLat[] = [];
   let crossings = 0;
@@ -86,16 +90,18 @@ export function assembleRoute(g: Graph, result: SearchResult, corrections?: Corr
     if (cls === 2) stats.paveM += len;
     if (cls === 1) stats.slabsM += len;
     if (push) stats.pushM += len;
+    const contra = (g.arcFlags[p.arc]! & FLAG_CONTRA) !== 0;
+    if (contra) stats.contraM += len;
     stats.railM += rail * f;
     crossings += g.arcCross[p.arc]! * f;
     const coords = arcSubline(g, p.arc, p.t0, p.t1);
     const last = segments[segments.length - 1];
     const isRail = rail > 0;
-    if (last && last.cls === cls && last.push === push && last.rail === isRail) {
+    if (last && last.cls === cls && last.push === push && last.rail === isRail && last.contra === contra) {
       last.coords.push(...coords.slice(1));
       last.length += len;
     } else {
-      segments.push({ coords, cls, push, rail: isRail, length: len });
+      segments.push({ coords, cls, push, rail: isRail, contra, length: len });
     }
     if (polyline.length === 0) polyline.push(...coords);
     else polyline.push(...coords.slice(1));

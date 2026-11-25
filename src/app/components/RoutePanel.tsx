@@ -93,6 +93,10 @@ export function RoutePanel() {
               <dt>Croisements</dt>
               <dd>{r.stats.crossings}</dd>
             </div>
+            <div className={r.stats.contraM > 0 ? 'stat contra' : 'stat'}>
+              <dt>Contresens</dt>
+              <dd>{m(r.stats.contraM)}</dd>
+            </div>
           </dl>
           <LevelCards />
           <button type="button" className="button primary start" onClick={() => void startTracking()}>

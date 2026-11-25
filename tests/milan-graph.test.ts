@@ -6,9 +6,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Router, type EdgePoint, type SearchResult } from '../src/core/astar.ts';
-import { type Tags, barrierBlocksBikes, wayAccess } from '../src/core/classify.ts';
+import { type Tags, barrierBlocksBikes, isWrongWay, wayAccess } from '../src/core/classify.ts';
 import { LEVELS, computeArcCosts } from '../src/core/cost.ts';
-import { FLAG_PUSH, type Graph, arcEdgeIndex, findArc, parseGraph } from '../src/core/graph.ts';
+import { FLAG_CONTRA, FLAG_PUSH, type Graph, arcEdgeIndex, findArc, parseGraph } from '../src/core/graph.ts';
 import { assembleRoute, pointOnEdge } from '../src/core/route.ts';
 import { rng } from './helpers/graph.ts';
 
@@ -94,6 +94,21 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
     let push = 0;
     for (let a = 0; a < g.header.arcCount; a++) if (g.arcFlags[a]! & FLAG_PUSH) push++;
     expect(push).toBe(0);
+  });
+
+  it.skipIf(!existsSync(RAW))('wrong-way flags match the oneway tags, arc by arc', { timeout: 120_000 }, () => {
+    const tagsById = new Map<number, Tags>();
+    for (const e of (JSON.parse(readFileSync(RAW, 'utf8')) as { elements: { id: number; tags: Tags }[] }).elements) tagsById.set(e.id, e.tags);
+    let flagged = 0;
+    const wrong: number[] = [];
+    for (let a = 0; a < g.header.arcCount; a++) {
+      const flag = (g.arcFlags[a]! & FLAG_CONTRA) !== 0;
+      if (flag) flagged++;
+      const wayId = g.wayId[g.edgeWay[arcEdgeIndex(g, a)]!]!;
+      if (flag !== isWrongWay(tagsById.get(wayId)!, g.arcEdge[a]! < 0) && wrong.length < 5) wrong.push(wayId);
+    }
+    expect(wrong).toEqual([]);
+    expect(flagged).toBeGreaterThan(1000);
   });
 
   it.skipIf(!existsSync(RAW))('routes only use ways open to pedestrians or bikes', { timeout: 120_000 }, () => {

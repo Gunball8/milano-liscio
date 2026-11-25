@@ -8,6 +8,7 @@ import {
   hasTaggedRails,
   isCarriageway,
   isPresentRail,
+  isWrongWay,
   wayAccess,
 } from '../src/core/classify.ts';
 
@@ -156,6 +157,16 @@ describe('directions (pedestrian rules)', () => {
     expect(directionalAccess({ highway: 'residential', oneway: 'yes' })).toEqual({ forward: 'ride', backward: 'ride' });
     expect(directionalAccess({ highway: 'primary', oneway: '-1' })).toEqual({ forward: 'ride', backward: 'ride' });
     expect(directionalAccess({ highway: 'secondary', junction: 'roundabout' })).toEqual({ forward: 'ride', backward: 'ride' });
+  });
+  it('wrong way is detected for the alert, not forbidden', () => {
+    expect(isWrongWay({ highway: 'residential', oneway: 'yes' }, true)).toBe(true);
+    expect(isWrongWay({ highway: 'residential', oneway: 'yes' }, false)).toBe(false);
+    expect(isWrongWay({ highway: 'residential', oneway: '-1' }, false)).toBe(true);
+    expect(isWrongWay({ highway: 'secondary', junction: 'roundabout' }, true)).toBe(true);
+    expect(isWrongWay({ highway: 'residential', oneway: 'yes', 'oneway:bicycle': 'no' }, true)).toBe(false);
+    expect(isWrongWay({ highway: 'residential', oneway: 'yes', cycleway: 'opposite_lane' }, true)).toBe(false);
+    expect(isWrongWay({ highway: 'cycleway', oneway: 'yes' }, true)).toBe(true);
+    expect(isWrongWay({ highway: 'footway', footway: 'sidewalk' }, true)).toBe(false);
   });
   it('an excluded way is excluded both ways', () => {
     expect(directionalAccess({ highway: 'motorway', oneway: 'yes' })).toEqual({ forward: 'excluded', backward: 'excluded' });

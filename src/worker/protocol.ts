@@ -15,6 +15,8 @@ export interface SegmentView {
   cls: number;
   push: boolean;
   rail: boolean;
+  /** Against a oneway. */
+  contra: boolean;
   /** Meters, for the route ribbon. */
   length: number;
 }

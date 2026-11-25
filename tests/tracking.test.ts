@@ -31,6 +31,11 @@ describe('RouteTracker (SPEC §9.2)', () => {
     expect(t.nextDegraded(750)).toBeNull();
   });
 
+  it('announces a wrong-way stretch first, as a safety alert', () => {
+    const t = new RouteTracker([seg(0, 300), seg(300, 500, { cls: 2, contra: true }), seg(500, 1000)]);
+    expect(t.nextDegraded(0)).toEqual({ kinds: ['contra', 'pave'], inM: expect.closeTo(300, 0), lengthM: expect.closeTo(200, 0) });
+  });
+
   it('does not jump to the return leg of a U-turn passing 20 m away', () => {
     const uturn: TrackSegment[] = [
       { coords: [pt(0), pt(500)], cls: 0, push: false, rail: false },

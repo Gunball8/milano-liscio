@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { storageStatus, totalSize, transferSize } from '../../storage/dataCache.ts';
+import { pendingTransfer, storageStatus, totalSize } from '../../storage/dataCache.ts';
 import { checkForUpdate, startUpdate } from '../boot.ts';
 import { fmtDate, fmtMB } from '../format.ts';
 import { useApp } from '../store.ts';
@@ -22,6 +22,16 @@ export function DataSheet() {
 
   const close = () => useApp.setState({ sheet: 'none' });
   const updateAvailable = !!remote && !!installed && remote.version !== installed.version;
+  // What the update really downloads: unchanged files (often the 21 MB basemap) are copied.
+  const [toDownload, setToDownload] = useState<number | null>(null);
+  useEffect(() => {
+    if (!remote || !updateAvailable) return;
+    let live = true;
+    void pendingTransfer(remote).then((b) => live && setToDownload(b));
+    return () => {
+      live = false;
+    };
+  }, [remote, updateAvailable]);
 
   return (
     <div className="sheet-backdrop" onClick={close}>
@@ -47,7 +57,7 @@ export function DataSheet() {
             {remote === undefined && 'vérification…'}
             {remote === null && 'hors ligne'}
             {remote && !updateAvailable && 'à jour'}
-            {remote && updateAvailable && `OpenStreetMap du ${fmtDate(remote.osmBase)} (≈ ${fmtMB(transferSize(remote))} à télécharger)`}
+            {remote && updateAvailable && `OpenStreetMap du ${fmtDate(remote.osmBase)}${toDownload !== null ? ` (≈ ${fmtMB(toDownload)} à télécharger)` : ''}`}
           </dd>
           <dt>Stockage</dt>
           <dd>
