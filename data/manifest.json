@@ -1,0 +1,38 @@
+{
+  "version": "20261123-d86bb5dc",
+  "osmBase": "2026-11-23T21:21:17Z",
+  "basemapBuild": "20261124.pmtiles",
+  "builtAt": "2026-11-25T14:47:28.917Z",
+  "bbox": [
+    9.028064735107861,
+    45.37774488987365,
+    9.290932264892138,
+    45.54484141012635
+  ],
+  "files": [
+    {
+      "name": "milano-graph.bin",
+      "size": 18249544,
+      "transfer": 10021043,
+      "sha256": "513572112cedd91c7e1050c76b06e5300eb3cb134b959fb760016052bd253895"
+    },
+    {
+      "name": "milano.pmtiles",
+      "size": 20982059,
+      "transfer": 20988098,
+      "sha256": "80732acafd53d498ea84274cbe19dfa735be18789e799a38bf6aaae6e062edc9"
+    },
+    {
+      "name": "milano-geocoder.bin",
+      "size": 1556128,
+      "transfer": 781664,
+      "sha256": "a813e2b654b9abf51c7fb995ea30f71f55ef507b1ce4a1e10bf5a5603a607396"
+    },
+    {
+      "name": "milano-ways.bin",
+      "size": 3140494,
+      "transfer": 502644,
+      "sha256": "8765c4e3703ba8faa035876d0e0bdc7692b6229cf1a68c53d10daee085b29a2f"
+    }
+  ]
+}
