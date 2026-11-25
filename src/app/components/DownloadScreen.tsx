@@ -1,4 +1,4 @@
-import { totalSize } from '../../storage/dataCache.ts';
+import { transferSize } from '../../storage/dataCache.ts';
 import { offerDownload, startFirstDownload } from '../boot.ts';
 import { fmtDate, fmtMB } from '../format.ts';
 import { useApp } from '../store.ts';
@@ -36,9 +36,7 @@ export function DownloadScreen() {
       <main className="screen">
         <h1>Téléchargement des données</h1>
         <ProgressBar loaded={progress.loaded} total={progress.total} />
-        <p className="figures">
-          {fmtMB(progress.loaded)} sur {fmtMB(progress.total)}
-        </p>
+        <p className="figures">{progress.total > 0 ? Math.floor((100 * progress.loaded) / progress.total) : 0}&nbsp;%</p>
         <p className="note">Garder l'appli ouverte jusqu'à la fin.</p>
       </main>
     );
@@ -52,7 +50,7 @@ export function DownloadScreen() {
         <>
           <p className="note">Données OpenStreetMap du {fmtDate(remote.osmBase)}.</p>
           <button type="button" className="button" onClick={() => void startFirstDownload(remote)}>
-            Télécharger ({fmtMB(totalSize(remote))})
+            Télécharger (≈&nbsp;{fmtMB(transferSize(remote))})
           </button>
         </>
       ) : (

@@ -1,4 +1,3 @@
-import { type RefObject, useRef } from 'react';
 import { exitCorrections } from '../corrections/actions.ts';
 import { useApp } from '../store.ts';
 import { usePanelHeight } from '../usePanelHeight.ts';
@@ -12,8 +11,7 @@ export function CorrectionsScreen() {
   const count = groups(corrections).length + todo;
   const zoomOk = useApp((s) => s.surfaceZoomOk);
   const selected = useApp((s) => !!s.selectedEdge);
-  const bottom = useRef<HTMLElement>(null);
-  usePanelHeight(bottom, 20);
+  const bottom = usePanelHeight<HTMLElement>(20);
   return (
     <>
       <header className="corrections-bar">
@@ -31,7 +29,7 @@ export function CorrectionsScreen() {
       {selected ? (
         <EdgeSheet panelRef={bottom} />
       ) : (
-        <div className="legend-bar" aria-label="Légende" ref={bottom as RefObject<HTMLDivElement>}>
+        <div className="legend-bar" aria-label="Légende" ref={bottom}>
           <span>
             <i style={{ borderColor: '#d6336c' }} />
             pavé

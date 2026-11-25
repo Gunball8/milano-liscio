@@ -22,7 +22,8 @@ function onOrientation(e: Event) {
   h = (h + angle + 360) % 360;
   const now = performance.now();
   const delta = Math.abs(((h - lastValue + 540) % 360) - 180);
-  if (now - lastEmit < 80 || (delta < 2 && now - lastEmit < 1000)) return;
+  // ~30 updates per second at most, and only for a visible change: the marker turns without map work.
+  if (now - lastEmit < 33 || (delta < 1 && now - lastEmit < 1000)) return;
   lastEmit = now;
   lastValue = h;
   useApp.setState({ compass: h });

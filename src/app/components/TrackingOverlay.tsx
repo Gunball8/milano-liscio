@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { NextStretch, StretchKind } from '../../core/tracking.ts';
 import { report, setFollowing, stopTracking } from '../tracking/session.ts';
 import { useApp } from '../store.ts';
@@ -26,8 +26,7 @@ const LOCK_HINT: Partial<Record<string, string>> = {
 export function TrackingOverlay() {
   const t = useApp((s) => s.tracking);
   const [flash, setFlash] = useState(false);
-  const controls = useRef<HTMLElement>(null);
-  usePanelHeight(controls, 16);
+  const controls = usePanelHeight<HTMLElement>(16);
   useEffect(() => {
     if (!flash) return;
     const id = setTimeout(() => setFlash(false), 1800);

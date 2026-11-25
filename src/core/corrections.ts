@@ -53,7 +53,9 @@ export class EdgeLookup {
   private edgesOfWay: Map<number, number[]> | null = null;
   private edgesOfName: Map<number, number[]> | null = null;
   private nodeEdges: { start: Uint32Array; list: Uint32Array } | null = null;
-  private bbox: Float32Array | null = null;
+  private bbox: Float64Array | null = null;
+  private grid: { minLon: number; minLat: number; cell: number; cols: number; rows: number; start: Uint32Array; list: Uint32Array; seen: Uint32Array; stamp: number } | null =
+    null;
 
   constructor(readonly g: Graph) {
     const E = g.header.edgeCount;
@@ -213,27 +215,95 @@ export class EdgeLookup {
     return [...seen];
   }
 
-  /** Lazily computed bounding boxes (lon/lat) of every edge. */
-  edgeBox(e: number): [number, number, number, number] {
-    if (!this.bbox) {
-      const b = new Float32Array(this.g.header.edgeCount * 4);
-      for (let i = 0; i < this.g.header.edgeCount; i++) {
-        let w = Infinity;
-        let s = Infinity;
-        let east = -Infinity;
-        let n = -Infinity;
-        for (const [x, y] of edgeLngLats(this.g, i)) {
-          w = Math.min(w, x);
-          east = Math.max(east, x);
-          s = Math.min(s, y);
-          n = Math.max(n, y);
-        }
-        b.set([w, s, east, n], i * 4);
+  /** Bounding boxes (degrees) of every edge, from the typed coordinates, computed once. */
+  private boxes(): Float64Array {
+    if (this.bbox) return this.bbox;
+    const g = this.g;
+    const E = g.header.edgeCount;
+    const b = new Float64Array(E * 4);
+    for (let e = 0; e < E; e++) {
+      const a = g.edgeFrom[e]!;
+      const z = g.edgeTo[e]!;
+      let w = Math.min(g.nodeLon[a]!, g.nodeLon[z]!);
+      let east = Math.max(g.nodeLon[a]!, g.nodeLon[z]!);
+      let s = Math.min(g.nodeLat[a]!, g.nodeLat[z]!);
+      let n = Math.max(g.nodeLat[a]!, g.nodeLat[z]!);
+      for (let c = g.edgeCoordStart[e]!; c < g.edgeCoordStart[e + 1]!; c++) {
+        const lon = g.coordLon[c]!;
+        const lat = g.coordLat[c]!;
+        if (lon < w) w = lon;
+        if (lon > east) east = lon;
+        if (lat < s) s = lat;
+        if (lat > n) n = lat;
       }
-      this.bbox = b;
+      b[e * 4] = w / 1e7;
+      b[e * 4 + 1] = s / 1e7;
+      b[e * 4 + 2] = east / 1e7;
+      b[e * 4 + 3] = n / 1e7;
     }
+    this.bbox = b;
+    return b;
+  }
+
+  edgeBox(e: number): [number, number, number, number] {
+    const b = this.boxes();
     const o = e * 4;
-    return [this.bbox[o]!, this.bbox[o + 1]!, this.bbox[o + 2]!, this.bbox[o + 3]!];
+    return [b[o]!, b[o + 1]!, b[o + 2]!, b[o + 3]!];
+  }
+
+  /** Edges whose box intersects a viewport, through a coarse grid (about 400 m cells) built once. */
+  edgesInBox(w: number, s: number, e: number, n: number): number[] {
+    const b = this.boxes();
+    const E = this.g.header.edgeCount;
+    if (!this.grid) {
+      let minLon = Infinity;
+      let minLat = Infinity;
+      let maxLon = -Infinity;
+      let maxLat = -Infinity;
+      for (let i = 0; i < E; i++) {
+        minLon = Math.min(minLon, b[i * 4]!);
+        minLat = Math.min(minLat, b[i * 4 + 1]!);
+        maxLon = Math.max(maxLon, b[i * 4 + 2]!);
+        maxLat = Math.max(maxLat, b[i * 4 + 3]!);
+      }
+      const cell = 0.004;
+      const cols = Math.floor((maxLon - minLon) / cell) + 1;
+      const rows = Math.floor((maxLat - minLat) / cell) + 1;
+      const start = new Uint32Array(cols * rows + 1);
+      const each = (i: number, f: (k: number) => void) => {
+        const c0 = Math.floor((b[i * 4]! - minLon) / cell);
+        const c1 = Math.floor((b[i * 4 + 2]! - minLon) / cell);
+        const r0 = Math.floor((b[i * 4 + 1]! - minLat) / cell);
+        const r1 = Math.floor((b[i * 4 + 3]! - minLat) / cell);
+        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) f(r * cols + c);
+      };
+      for (let i = 0; i < E; i++) each(i, (k) => start[k + 1]!++);
+      for (let k = 0; k < cols * rows; k++) start[k + 1]! += start[k]!;
+      const list = new Uint32Array(start[cols * rows]!);
+      const fill = start.slice(0, cols * rows);
+      for (let i = 0; i < E; i++) each(i, (k) => (list[fill[k]!++] = i));
+      this.grid = { minLon, minLat, cell, cols, rows, start, list, seen: new Uint32Array(E), stamp: 0 };
+    }
+    const gr = this.grid;
+    gr.stamp++;
+    const out: number[] = [];
+    const c0 = Math.max(0, Math.floor((w - gr.minLon) / gr.cell));
+    const c1 = Math.min(gr.cols - 1, Math.floor((e - gr.minLon) / gr.cell));
+    const r0 = Math.max(0, Math.floor((s - gr.minLat) / gr.cell));
+    const r1 = Math.min(gr.rows - 1, Math.floor((n - gr.minLat) / gr.cell));
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const k = r * gr.cols + c;
+        for (let j = gr.start[k]!; j < gr.start[k + 1]!; j++) {
+          const i = gr.list[j]!;
+          if (gr.seen[i] === gr.stamp) continue;
+          gr.seen[i] = gr.stamp;
+          if (b[i * 4 + 2]! < w || b[i * 4]! > e || b[i * 4 + 3]! < s || b[i * 4 + 1]! > n) continue;
+          out.push(i);
+        }
+      }
+    }
+    return out.sort((x, y) => x - y);
   }
 }
 
@@ -281,9 +351,7 @@ export function surfaceFeatures(
   limit = 15_000,
 ): { features: SurfaceFeature[]; truncated: boolean } {
   const features: SurfaceFeature[] = [];
-  for (let i = 0; i < lookup.g.header.edgeCount; i++) {
-    const [bw, bs, be, bn] = lookup.edgeBox(i);
-    if (be < w || bw > e || bn < s || bs > n) continue;
+  for (const i of lookup.edgesInBox(w, s, e, n)) {
     const st = lookup.effectiveState(i, overrides);
     if (!lookup.rideable[i] && !st.corrected) continue;
     const show = st.cls === 2 || st.cls === 1 || st.cls === 4 || st.rail || st.corrected;

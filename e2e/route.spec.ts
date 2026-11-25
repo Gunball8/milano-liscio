@@ -2,7 +2,8 @@
  * Phase 3 acceptance (SPEC §11): in airplane mode, search a street, then see the three alternatives
  * and their statistics. Plus departure search, coordinates, level change, long press and favourites.
  */
-import { type Page, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { firstLaunch, waitForMap } from './helpers.ts';
 
 test.use({ geolocation: { latitude: 45.4641, longitude: 9.19 }, permissions: ['geolocation'] });
@@ -147,8 +148,8 @@ test('the position arrow follows where the phone points', async ({ page, browser
   await page.getByRole('button', { name: 'Me localiser' }).click();
   const heading = () =>
     page.evaluate(() => {
-      const m = (window as unknown as { __map: { querySourceFeatures(s: string): { properties: { heading: number } }[] } }).__map;
-      return m.querySourceFeatures('liscio-me')[0]?.properties.heading ?? null;
+      const el = document.querySelector<HTMLElement>('.me-marker');
+      return el ? Number(el.dataset['heading']) : null;
     });
   await expect.poll(heading).toBe(-1); // located, no direction yet: dot
   await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 90, beta: 0, gamma: 0, absolute: true })));

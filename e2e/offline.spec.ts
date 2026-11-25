@@ -2,7 +2,7 @@
  * Phase 2 acceptance (SPEC §11): after a first load, airplane mode, relaunch → map and labels show
  * over the whole zone. Relaunch is a reload at the start URL; offline is emulated by the browser.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { firstLaunch, probe, waitForMap, zonePoints } from './helpers.ts';
 
 test('offline relaunch shows the map and its labels over the whole zone', async ({ page, context }, info) => {

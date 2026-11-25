@@ -1,19 +1,19 @@
-import { type RefObject, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Publishes the height of the bottom element of the current screen as --panel-h, so map controls
- * (attribution) and route framing stay clear of it. Every mode sets it; 0 when nothing is at the bottom.
+ * (attribution, locate button, toasts) and route framing stay clear of it. Returns a callback ref: the
+ * observer is created when the element changes, not at every render (the tracking banner re-renders
+ * at each GPS fix).
  */
-export function usePanelHeight(ref: RefObject<HTMLElement | null>, extra = 0) {
+export function usePanelHeight<T extends HTMLElement>(extra = 0): (el: T | null) => void {
+  const [el, setEl] = useState<T | null>(null);
   useEffect(() => {
-    const el = ref.current;
     const setH = (h: number) => document.documentElement.style.setProperty('--panel-h', `${h}px`);
-    if (!el) {
-      setH(0);
-      return;
-    }
+    if (!el) return;
     const ro = new ResizeObserver(() => setH(el.offsetHeight + extra));
     ro.observe(el);
     return () => ro.disconnect();
-  });
+  }, [el, extra]);
+  return useCallback((node: T | null) => setEl(node), []);
 }

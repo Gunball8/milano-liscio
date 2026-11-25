@@ -1322,3 +1322,53 @@ details summary {
   border-radius: 18px;
   font-weight: 600;
 }
+
+/* ---------- position marker (DOM, turned by the map) ---------- */
+
+.me-marker {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  pointer-events: none;
+}
+
+.me-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.18);
+}
+
+.me-arrow {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.me-arrow path {
+  fill: #1a73e8;
+  stroke: #ffffff;
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+}
+
+.me-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: 3.5px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.me-marker.has-heading .me-arrow {
+  display: block;
+}
+
+.me-marker.has-heading .me-dot {
+  display: none;
+}

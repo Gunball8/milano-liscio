@@ -4,7 +4,8 @@
  * Plus reports to sort and settings (SPEC §9.3, §9.4).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { type Page, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { firstLaunch, waitForMap, waitForState } from './helpers.ts';
 
 test.use({ geolocation: { latitude: 45.4641, longitude: 9.19, accuracy: 5 }, permissions: ['geolocation'] });

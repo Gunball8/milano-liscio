@@ -7,6 +7,8 @@
 export interface DataFile {
   name: string;
   size: number;
+  /** Approximate bytes over the wire (gzip by the host); older manifests lack it. */
+  transfer?: number;
   sha256: string;
 }
 
@@ -35,6 +37,7 @@ const completeUrl = `${BASE}data/__complete__`;
 const cacheName = (version: string) => CACHE_PREFIX + version;
 
 export const totalSize = (m: DataManifest) => m.files.reduce((s, f) => s + f.size, 0);
+export const transferSize = (m: DataManifest) => m.files.reduce((s, f) => s + (f.transfer ?? f.size), 0);
 
 /** Latest manifest from the network, or null when offline / unreachable. */
 export async function fetchRemoteManifest(): Promise<DataManifest | null> {
@@ -100,9 +103,16 @@ export async function downloadVersion(m: DataManifest, onProgress: (p: Progress)
     done += f.size;
   }
   await cache.put(completeUrl, new Response(JSON.stringify(m), { headers: { 'Content-Type': 'application/json' } }));
-  // Only now drop older versions (SPEC §8).
+}
+
+/**
+ * Drops every data version but `keep` (SPEC §8: the old one goes only once the new one is in use).
+ * Called once the map has loaded on `keep`: deleting earlier could pull the basemap file from under a
+ * map still reading it (WebKit backs cached blobs with files).
+ */
+export async function deleteOtherVersions(keep: string): Promise<void> {
   for (const name of await caches.keys()) {
-    if (name.startsWith(CACHE_PREFIX) && name !== cacheName(m.version)) await caches.delete(name);
+    if (name.startsWith(CACHE_PREFIX) && name !== cacheName(keep)) await caches.delete(name);
   }
 }
 

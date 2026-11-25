@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CorrectedSurface } from '../../core/corrections.ts';
 import { applyCorrection, restoreOsm, setWholeStreet } from '../corrections/actions.ts';
 import { call } from '../routing/client.ts';
@@ -15,7 +15,7 @@ const m = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('fr-FR', { ma
 const frDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'date inconnue');
 
 /** Segment sheet (SPEC §9.3): name, OSM tags and date, link, effective state, actions. */
-export function EdgeSheet({ panelRef }: { panelRef?: RefObject<HTMLElement | null> }) {
+export function EdgeSheet({ panelRef }: { panelRef?: (el: HTMLElement | null) => void }) {
   const e = useApp((s) => s.selectedEdge);
   const street = useApp((s) => s.street);
   const wholeStreet = useApp((s) => s.wholeStreet);

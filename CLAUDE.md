@@ -65,3 +65,6 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Map attribution is bottom-left (the locate button is bottom-right).
 - Closed gates (barrier + access=private/no, locked=yes, bicycle=no, turnstiles) cut the graph: split there, ends not connected (`barrierBlocksBikes`, 625 on the network). Audit report: `docs/audit-app.md`.
 - `pnpm data:graph` and `pnpm data:geocoder` refresh the manifest; `pnpm run deploy` refuses data that does not match it (a stale SHA-256 makes the app refuse the download).
+- Every e2e test runs under a console guard (`e2e/fixtures.ts`): any JS error or console error/warning fails it. Import `test`/`expect` from `./fixtures.ts`, not from `@playwright/test`.
+- Hot paths are typed-array loops checked against reference implementations (`tests/optimized-equivalence.test.ts`): `computeArcCostsMulti` (all levels in one pass), `SnapIndex` (CSR grid), `EdgeLookup.edgesInBox` (coarse grid).
+- Missing basemap icons go through `map.setMissingStyleImageResolver` (MapLibre 6); old data versions are deleted only after the map loaded the new one (`deleteOtherVersions`).

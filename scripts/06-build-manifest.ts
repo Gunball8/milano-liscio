@@ -7,6 +7,7 @@
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { RAW_DIR, readFetchLog } from './lib/overpass.ts';
 
@@ -29,7 +30,8 @@ async function main() {
       console.log(`  ${name}: absent, skipped`);
       continue;
     }
-    files.push({ name, size: (await stat(p)).size, sha256: await sha256(p) });
+    // transfer: bytes over the wire, the host compresses these files (gzip) on the fly
+    files.push({ name, size: (await stat(p)).size, transfer: gzipSync(await readFile(p), { level: 6 }).length, sha256: await sha256(p) });
   }
   if (files.length === 0) throw new Error('no data file in public/data, run the data scripts first');
   const osmBase = (await readFetchLog()).filter((e) => e.name === 'highways').at(-1)?.osmBase ?? null;
@@ -47,7 +49,8 @@ async function main() {
   };
   await writeFile(path.join(DATA, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   const mb = files.reduce((s, f) => s + f.size, 0) / 1e6;
-  console.log(`manifest ${version}: ${files.map((f) => f.name).join(', ')} (${mb.toFixed(1)} MB)`);
+  const wire = files.reduce((s, f) => s + f.transfer, 0) / 1e6;
+  console.log(`manifest ${version}: ${files.map((f) => f.name).join(', ')} (${mb.toFixed(1)} MB on the phone, ~${wire.toFixed(1)} MB to download)`);
 }
 
 main().catch((err) => {

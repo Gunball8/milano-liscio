@@ -53,3 +53,43 @@ Non testable en navigateur de test : maintien de l'écran allumé, reprise aprè
 
 - Découper le code de la carte pour accélérer le tout premier écran : gain d'environ 0,1 s sur iPhone, une seule fois.
 - Pénaliser les chicanes (`cycle_barrier`) : peu nombreuses (47 sur le réseau), à reconsidérer si la recette en révèle de gênantes.
+
+---
+
+# Deuxième passe : erreurs et optimisation (25 novembre 2026)
+
+## Erreurs
+
+Parcours complet des fonctions (premier lancement, localisation, recherche et favoris, 4 niveaux, inversion, appui long, suivi avec signalement, Corrections avec export JSON et GeoJSON, réglages, données, passage en thème sombre), en mode développement (avertissements React actifs), sous Chromium et WebKit. Résultat final : **aucune erreur, aucun avertissement**.
+
+| Trouvé | Correction |
+|---|---|
+| Avertissement « Image townhall could not be loaded » à chaque mairie affichée : le style Protomaps demande une icône qu'aucun jeu d'icônes Protomaps ne fournit, et MapLibre 6 ne résout plus les images manquantes par l'événement utilisé. | Résolveur `setMissingStyleImageResolver` (image vide). |
+| « Map cannot fit within canvas » après un suivi : la marge de caméra du suivi s'ajoutait à celle du cadrage de l'itinéraire. | Marge de caméra remise à zéro avant chaque cadrage, marges plafonnées à la hauteur disponible. |
+| Lors d'une mise à jour des données, l'ancienne version était supprimée du cache avant que la carte passe sur la nouvelle. Sous iOS, la carte pouvait alors lire un fond déjà effacé (« NotReadableError »). | L'ancienne version n'est supprimée qu'une fois la carte chargée sur la nouvelle. |
+| Code inutilisé (2 déclarations). | Retiré ; `noUnusedLocals` et `noUnusedParameters` sont désormais imposés. |
+
+Garde permanente : tous les tests de bout en bout échouent désormais sur une erreur JavaScript ou un avertissement en console, à part les requêtes coupées volontairement en mode avion.
+
+## Optimisation
+
+Mesures sur Mac (Node), mêmes données. Résultats identiques avant et après, vérifiés par des tests d'équivalence sur le vrai graphe (coûts arc par arc, accrochage contre une recherche exhaustive sur 200 points, calque contre un balayage complet sur 50 cadres).
+
+| Poste | Avant | Après |
+|---|---:|---:|
+| Démarrage complet du moteur (graphe, accrochage, 4 niveaux, adresses) | ~175 ms | ~65 ms |
+| Index d'accrochage | 65 ms | 30 ms |
+| Coûts des 4 niveaux | 75 ms | 23 ms (un seul passage) |
+| Calque des revêtements, premier affichage | 45 ms | 25 ms |
+| Calque des revêtements, déplacement de la carte | 5 à 10 ms | 0,7 ms |
+| 1 000 accrochages | 13 ms | 4 ms |
+| Itinéraire complet (4 niveaux) | 10 ms | 4 à 10 ms |
+
+Fluidité :
+
+- Pendant le suivi, chaque position GPS renvoyait tout l'itinéraire au moteur de rendu de la carte ; désormais seule la position bouge.
+- La flèche de position est un marqueur que la carte tourne elle-même : jusqu'à 30 mises à jour par seconde au lieu de 12, sans passer par le moteur de rendu.
+- Le moteur démarre en même temps que la lecture des réglages et corrections, au lieu d'après.
+- La hauteur des panneaux est observée sans recréer d'observateur à chaque rendu (le bandeau de suivi se redessine à chaque position).
+
+Téléchargement : GitHub compresse déjà les données. Le premier téléchargement fait environ 30 Mo réels pour 39 Mo sur le téléphone ; le fond de carte (21 Mo) est déjà compressé et ne peut pas l'être davantage sans perdre le zoom 15. Le bouton annonce maintenant le poids réel, et la progression s'affiche en pourcentage.

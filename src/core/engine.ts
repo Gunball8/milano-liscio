@@ -3,7 +3,7 @@
  * three computations per request of SPEC §7 (level 0, chosen level, level 3).
  */
 import { Router } from './astar.ts';
-import { type CostOptions, type Corrections, DEFAULT_FACTORS, LEVELS, type Level, type PenaltyFactors, computeArcCosts, scaledPenalties } from './cost.ts';
+import { type CostOptions, type Corrections, DEFAULT_FACTORS, LEVELS, type Level, type PenaltyFactors, computeArcCostsMulti, scaledPenalties } from './cost.ts';
 import type { Graph } from './graph.ts';
 import { type Route, type Speeds, DEFAULT_SPEEDS, assembleRoute } from './route.ts';
 import { SNAP_MAX_M, SnapIndex, type Snapped } from './snap.ts';
@@ -56,13 +56,19 @@ export class RoutingEngine {
     this.costs = LEVELS.map(() => null);
   }
 
+  /** Costs of a level; every missing level is computed in the same pass over the arcs. */
   costsFor(level: number): Float64Array {
-    let c = this.costs[level];
-    if (!c) {
-      c = computeArcCosts(this.graph, scaledPenalties(LEVELS[level]!.penalties, this.factors), this.corrections, this.costOptions);
-      this.costs[level] = c;
+    if (!this.costs[level]) {
+      const missing = LEVELS.filter((l) => !this.costs[l.id]);
+      const arrays = computeArcCostsMulti(
+        this.graph,
+        missing.map((l) => scaledPenalties(l.penalties, this.factors)),
+        this.corrections,
+        this.costOptions,
+      );
+      missing.forEach((l, i) => (this.costs[l.id] = arrays[i]!));
     }
-    return c;
+    return this.costs[level]!;
   }
 
   /** Levels 0, chosen and 3 (deduplicated, in that order). */

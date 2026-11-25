@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import type { SegmentView } from '../../worker/protocol.ts';
 import { LEVELS } from '../../core/cost.ts';
 import { clearRoute, computeRoute, setLevel } from '../routing/actions.ts';
@@ -32,8 +31,7 @@ export function RoutePanel() {
   const status = useApp((s) => s.routeStatus);
   const error = useApp((s) => s.routeError);
   const engine = useApp((s) => s.engine);
-  const panel = useRef<HTMLElement>(null);
-  usePanelHeight(panel);
+  const panel = usePanelHeight<HTMLElement>();
 
   if (!to) {
     return (

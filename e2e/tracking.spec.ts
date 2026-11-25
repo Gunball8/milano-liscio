@@ -2,7 +2,8 @@
  * Phase 4 acceptance (SPEC §11, §12): tracking with simulated geolocation — progress, leaving the
  * route and recalculation, imprecise fixes, report button, arrival.
  */
-import { type Page, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { appState, firstLaunch, pointAlong, waitForState } from './helpers.ts';
 
 const START = { latitude: 45.4641, longitude: 9.19, accuracy: 5 };
@@ -43,8 +44,8 @@ test('tracking: progress, off-route recalculation, imprecise GPS, report, arriva
   expect((await appState(page)).tracking!.recalcs).toBe(0);
   // The position arrow points along the course while riding (no compass in the test browser).
   const arrow = await page.evaluate(() => {
-    const m = (window as unknown as { __map: { querySourceFeatures(s: string): { properties: { heading: number } }[] } }).__map;
-    return m.querySourceFeatures('liscio-me')[0]?.properties.heading ?? null;
+    const el = document.querySelector<HTMLElement>('.me-marker');
+    return el ? Number(el.dataset['heading']) : null;
   });
   expect(arrow).not.toBeNull();
   expect(arrow!).toBeGreaterThanOrEqual(0);

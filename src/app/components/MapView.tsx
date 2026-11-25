@@ -1,9 +1,9 @@
 import { AttributionControl, type LngLatBoundsLike, MapLibreMap } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
-import { readDataFile } from '../../storage/dataCache.ts';
+import { deleteOtherVersions, readDataFile } from '../../storage/dataCache.ts';
 import { registerArchive } from '../map/pmtiles.ts';
 import { REPORTS_SOURCE, SELECTION_SOURCE, SURFACE_LAYERS, SURFACE_MIN_ZOOM, SURFACE_SOURCE, EMPTY, addCorrectionLayers, setData } from '../map/correctionLayers.ts';
-import { addMeLayer, setMe } from '../map/meLayer.ts';
+import { dropMe, setMe } from '../map/meLayer.ts';
 import { ALT_HIT_LAYER, addRouteLayers, keepRouteLayers, routeData, setRouteData } from '../map/routeLayers.ts';
 import { PMTILES_NAME, buildStyle } from '../map/style.ts';
 import { selectEdgeAt } from '../corrections/actions.ts';
@@ -46,7 +46,20 @@ function fitRoutes(map: MapLibreMap) {
   if (!routes?.length) return;
   let b = [Infinity, Infinity, -Infinity, -Infinity];
   for (const r of routes) for (const seg of r.segments) for (const [x, y] of seg.coords) b = [Math.min(b[0]!, x), Math.min(b[1]!, y), Math.max(b[2]!, x), Math.max(b[3]!, y)];
-  map.fitBounds(b as LngLatBoundsLike, { padding: { top: 170, bottom: panelHeight() + 30, left: 40, right: 40 }, maxZoom: 16, duration: 400 });
+  // Padding for the search card and the panel, never more than the canvas can take.
+  const { clientWidth: w, clientHeight: h } = map.getContainer();
+  let top = 170;
+  let bottom = panelHeight() + 30;
+  const room = h * 0.85;
+  if (top + bottom > room) {
+    const k = room / (top + bottom);
+    top *= k;
+    bottom *= k;
+  }
+  const side = Math.min(40, w * 0.1);
+  // The camera keeps its own padding (tracking sets one): clear it, or both add up past the canvas.
+  map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  map.fitBounds(b as LngLatBoundsLike, { padding: { top, bottom, left: side, right: side }, maxZoom: 16, duration: 400 });
 }
 
 // ---------- corrections (SPEC §9.3) ----------
@@ -171,9 +184,11 @@ export function MapView() {
         map.addControl(new AttributionControl({ compact: true }), 'bottom-left');
         const m = map;
         m.on('load', () => {
+          // The map now reads this version: older data versions can go (not before, iOS may still be
+          // reading the old basemap file).
+          void deleteOtherVersions(version);
           addRouteLayers(m, schemeRef.current);
           addCorrectionLayers(m);
-          addMeLayer(m);
           pushRoute(m);
           pushMe(m);
           pushSelection(m);
@@ -188,6 +203,11 @@ export function MapView() {
         // In the Corrections screen a tap picks the nearest street.
         m.on('click', (ev) => {
           if (useApp.getState().mode === 'corrections') void selectEdgeAt(ev.lngLat.lng, ev.lngLat.lat);
+        });
+        // Icons the basemap style names but no Protomaps sprite provides (e.g. "townhall"): an empty image.
+        // MapLibre 6 resolves missing images through this hook; the event alone comes after the warning.
+        m.setMissingStyleImageResolver((id) => {
+          if (!m.hasImage(id)) m.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
         });
         m.on('click', ALT_HIT_LAYER, (ev) => {
           if (useApp.getState().mode !== 'map') return; // corrections: a tap picks a street, not a level
@@ -209,6 +229,7 @@ export function MapView() {
     })();
     return () => {
       cancelled = true;
+      dropMe();
       map?.remove();
       mapRef.current = null;
     };
@@ -220,7 +241,10 @@ export function MapView() {
       useApp.subscribe((s, prev) => {
         const m = mapRef.current;
         if (!m || !m.getSource('liscio-route')) return;
-        if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.position !== prev.position || s.mode !== prev.mode) pushRoute(m);
+        // The route source only depends on the position for a "Ma position" start shown on the map screen:
+        // while riding, a GPS fix must not resend the whole route to the map worker.
+        const positionMatters = s.mode === 'map' && s.from.kind === 'position' && !!s.routes;
+        if (s.routes !== prev.routes || s.selected !== prev.selected || s.from !== prev.from || s.to !== prev.to || s.mode !== prev.mode || (positionMatters && s.position !== prev.position)) pushRoute(m);
         if (s.position !== prev.position || s.compass !== prev.compass || s.tracking?.course !== prev.tracking?.course || s.mode !== prev.mode) pushMe(m);
         if (s.flyTo && s.flyTo !== prev.flyTo) m.flyTo({ center: [s.flyTo.lon, s.flyTo.lat], zoom: s.flyTo.zoom, duration: 600 });
         if (s.mode !== prev.mode || s.surfaceLayer !== prev.surfaceLayer || s.surfaceKey !== prev.surfaceKey || s.engine !== prev.engine) void refreshSurface(m);
@@ -257,7 +281,6 @@ export function MapView() {
       for (const id of ['lr-alt', 'lr-rail', 'lr-casing', 'lr-main', 'lr-push', 'lr-ends', ALT_HIT_LAYER]) if (m.getLayer(id)) m.removeLayer(id);
       addRouteLayers(m, scheme);
       addCorrectionLayers(m);
-      addMeLayer(m);
       pushRoute(m);
       pushMe(m);
       pushSelection(m);

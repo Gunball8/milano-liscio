@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { storageStatus, totalSize } from '../../storage/dataCache.ts';
+import { storageStatus, totalSize, transferSize } from '../../storage/dataCache.ts';
 import { checkForUpdate, startUpdate } from '../boot.ts';
 import { fmtDate, fmtMB } from '../format.ts';
 import { useApp } from '../store.ts';
@@ -47,7 +47,7 @@ export function DataSheet() {
             {remote === undefined && 'vérification…'}
             {remote === null && 'hors ligne'}
             {remote && !updateAvailable && 'à jour'}
-            {remote && updateAvailable && `OpenStreetMap du ${fmtDate(remote.osmBase)} (${fmtMB(totalSize(remote))})`}
+            {remote && updateAvailable && `OpenStreetMap du ${fmtDate(remote.osmBase)} (≈ ${fmtMB(transferSize(remote))} à télécharger)`}
           </dd>
           <dt>Stockage</dt>
           <dd>
@@ -59,9 +59,7 @@ export function DataSheet() {
         {updating && progress ? (
           <>
             <ProgressBar loaded={progress.loaded} total={progress.total} />
-            <p className="figures">
-              {fmtMB(progress.loaded)} sur {fmtMB(progress.total)}
-            </p>
+            <p className="figures">{progress.total > 0 ? Math.floor((100 * progress.loaded) / progress.total) : 0}&nbsp;%</p>
           </>
         ) : updateAvailable ? (
           <button type="button" className="button" onClick={() => void startUpdate()}>

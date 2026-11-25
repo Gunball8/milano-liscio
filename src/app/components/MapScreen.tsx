@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { loadCorrectionData } from '../corrections/actions.ts';
 import { initEngine, loadPreferences } from '../routing/actions.ts';
+import { syncWorker } from '../routing/sync.ts';
 import { useApp } from '../store.ts';
 import { ContextMenu } from './ContextMenu.tsx';
 import { LocateButton } from './LocateButton.tsx';
@@ -25,10 +26,11 @@ export function MapScreen() {
   const mode = useApp((s) => s.mode);
 
   useEffect(() => {
-    // preferences and corrections first, so the worker gets them right after start-up
-    void Promise.all([loadPreferences(), loadCorrectionData()]).then(() => {
-      if (version) void initEngine(version);
-    });
+    if (!version) return;
+    // The worker starts at once; settings and corrections load in parallel and are pushed to it as
+    // soon as both are ready (initEngine also pushes whatever is loaded when it becomes ready).
+    void initEngine(version);
+    void Promise.all([loadPreferences(), loadCorrectionData()]).then(() => syncWorker());
   }, [version]);
 
   return (
