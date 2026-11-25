@@ -1,6 +1,8 @@
 # Calibrage des pénalités (phase 1)
 
-Généré par `pnpm calibrate` le 2026-11-24 15:11 UTC, graphe du 2026-11-23 (D = 3 m). Pénalités de départ du §7. Carte : `docs/calibration-map.html`. Ne pas éditer à la main : les commentaires vont dans `docs/calibration-notes.md`, inséré ci-dessous.
+Généré par `pnpm calibrate` le 2026-11-25 13:45 UTC, graphe du 2026-11-23 (D = 3 m). Pénalités de départ du §7. Carte : `docs/calibration-map.html`. Ne pas éditer à la main : les commentaires vont dans `docs/calibration-notes.md`, inséré ci-dessous.
+
+> **25/11/2026 : modèle d'accès piéton.** Les commentaires ci-dessous datent des règles vélo (contresens et voies piétonnes « à pied », trottoirs exclus). Les tableaux générés plus bas reflètent le graphe actuel, où tout se roule dans les deux sens.
 
 ## Lecture et décisions proposées (phase 1)
 
@@ -50,40 +52,40 @@ Le fichier fait 16,9 Mo (8,3 Mo compressé au téléchargement), au-dessus de l'
 
 Départ : Piazza del Duomo (square, way/463529462) · arrivée : Piazza Ventiquattro Maggio (rue, way/352969044).
 
-Accrochage : départ à 51 m, arrivée à 0 m.
+Accrochage : départ à 36 m, arrivée à 0 m.
 
 | Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 Court | 1.86 km | – | 7 min | 878 m | 200 m | 272 m | 4 | 5 m |
-| 1 Équilibré | 2.39 km | +529 m (+28.4 %) | 10 min | 196 m | 171 m | 77 m | 6 | 2 m |
-| 2 Lisse | 3.01 km | +1152 m (+61.9 %) | 12 min | 44 m | 190 m | 17 m | 0 | 0 m |
-| 3 Zéro pavé | 3.20 km | +1342 m (+72.1 %) | 14 min | 2 m | 169 m | 0 m | 0 | 101 m |
+| 0 Court | 1.73 km | – | 7 min | 765 m | 259 m | 137 m | 2 | 0 m |
+| 1 Équilibré | 1.79 km | +58 m (+3.4 %) | 7 min | 27 m | 259 m | 0 m | 0 | 0 m |
+| 2 Lisse | 1.84 km | +108 m (+6.2 %) | 7 min | 22 m | 204 m | 0 m | 0 | 0 m |
+| 3 Zéro pavé | 2.03 km | +300 m (+17.3 %) | 8 min | 0 m | 135 m | 0 m | 0 | 0 m |
 
 ## 2. Piazza Castello → Porta Venezia
 
 Départ : Piazza Castello (square, way/728204530) · arrivée : Porta Venezia (attraction, way/27596330).
 
-Accrochage : départ à 28 m, arrivée à 12 m.
+Accrochage : départ à 2 m, arrivée à 9 m.
 
 | Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 Court | 2.47 km | – | 10 min | 919 m | 191 m | 51 m | 3 | 0 m |
-| 1 Équilibré | 2.95 km | +474 m (+19.2 %) | 12 min | 67 m | 1.06 km | 3 m | 0 | 2 m |
-| 2 Lisse | 3.16 km | +688 m (+27.8 %) | 13 min | 74 m | 315 m | 8 m | 1 | 72 m |
-| 3 Zéro pavé | 3.73 km | +1256 m (+50.8 %) | 16 min | 0 m | 34 m | 0 m | 0 | 154 m |
+| 0 Court | 2.26 km | – | 9 min | 820 m | 147 m | 67 m | 5 | 0 m |
+| 1 Équilibré | 2.40 km | +138 m (+6.1 %) | 10 min | 11 m | 191 m | 2 m | 2 | 0 m |
+| 2 Lisse | 2.48 km | +214 m (+9.5 %) | 10 min | 0 m | 141 m | 0 m | 1 | 0 m |
+| 3 Zéro pavé | 2.59 km | +327 m (+14.4 %) | 10 min | 0 m | 32 m | 0 m | 1 | 0 m |
 
 ## 3. Stazione Centrale → Università Bocconi (Via Sarfatti)
 
 Départ : Milano Centrale (gare, node/6067258870) · arrivée : Via Roberto Sarfatti (rue, way/264776940).
 
-Accrochage : départ à 89 m, arrivée à 0 m.
+Accrochage : départ à 1 m, arrivée à 0 m.
 
 | Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 Court | 5.02 km | – | 20 min | 804 m | 316 m | 416 m | 4 | 0 m |
-| 1 Équilibré | 5.09 km | +70 m (+1.4 %) | 20 min | 55 m | 273 m | 0 m | 0 | 0 m |
-| 2 Lisse | 5.09 km | +70 m (+1.4 %) | 20 min | 55 m | 273 m | 0 m | 0 | 0 m |
-| 3 Zéro pavé | 6.04 km | +1021 m (+20.4 %) | 24 min | 0 m | 131 m | 15 m | 0 | 0 m |
+| 0 Court | 4.92 km | – | 20 min | 210 m | 432 m | 0 m | 2 | 0 m |
+| 1 Équilibré | 4.93 km | +14 m (+0.3 %) | 20 min | 23 m | 425 m | 0 m | 1 | 0 m |
+| 2 Lisse | 5.06 km | +147 m (+3.0 %) | 20 min | 2 m | 187 m | 0 m | 0 | 0 m |
+| 3 Zéro pavé | 5.52 km | +599 m (+12.2 %) | 22 min | 2 m | 0 m | 0 m | 0 | 0 m |
 
 ## 4. Piazza Medaglie d'Oro → Basilica di Sant'Ambrogio
 
@@ -93,27 +95,27 @@ Accrochage : départ à 0 m, arrivée à 0 m.
 
 | Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 Court | 3.01 km | – | 12 min | 1.18 km | 229 m | 867 m | 8 | 38 m |
-| 1 Équilibré | 3.25 km | +239 m (+7.9 %) | 13 min | 338 m | 216 m | 33 m | 6 | 38 m |
-| 2 Lisse | 3.67 km | +659 m (+21.9 %) | 15 min | 118 m | 194 m | 18 m | 0 | 58 m |
-| 3 Zéro pavé | 4.17 km | +1160 m (+38.5 %) | 18 min | 66 m | 194 m | 0 m | 0 | 100 m |
+| 0 Court | 2.85 km | – | 11 min | 1.49 km | 199 m | 879 m | 7 | 0 m |
+| 1 Équilibré | 2.98 km | +133 m (+4.7 %) | 12 min | 40 m | 184 m | 0 m | 0 | 0 m |
+| 2 Lisse | 3.01 km | +160 m (+5.6 %) | 12 min | 40 m | 107 m | 0 m | 0 | 0 m |
+| 3 Zéro pavé | 3.26 km | +415 m (+14.6 %) | 13 min | 20 m | 100 m | 0 m | 0 | 0 m |
 
 ## 5. Stazione Lambrate → Piazza Leonardo da Vinci (témoin)
 
-Départ : Milano Lambrate (gare, node/169701311) · arrivée : Piazza Leonardo da Vinci (rue, way/439105625).
+Départ : Milano Lambrate (gare, node/169701311) · arrivée : Piazza Leonardo da Vinci (park, relation/8066235).
 
-Accrochage : départ à 17 m, arrivée à 0 m.
+Accrochage : départ à 2 m, arrivée à 15 m.
 
 | Niveau | Distance | Écart vs Court | Durée | Pavé | Dalles | Le long de rails | Croisements obliques | À pied |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 Court | 2.15 km | – | 9 min | 0 m | 0 m | 157 m | 4 | 5 m |
-| 1 Équilibré | 2.15 km | +0 m (+0.0 %) | 9 min | 0 m | 0 m | 111 m | 3 | 20 m |
-| 2 Lisse | 2.13 km | -22 m (-1.0 %) | 9 min | 0 m | 0 m | 60 m | 2 | 78 m |
-| 3 Zéro pavé | 2.13 km | -22 m (-1.0 %) | 9 min | 0 m | 0 m | 60 m | 2 | 78 m |
+| 0 Court | 1.55 km | – | 6 min | 0 m | 52 m | 83 m | 2 | 0 m |
+| 1 Équilibré | 1.56 km | +10 m (+0.6 %) | 6 min | 0 m | 52 m | 0 m | 0 | 0 m |
+| 2 Lisse | 1.56 km | +10 m (+0.6 %) | 6 min | 0 m | 52 m | 0 m | 0 | 0 m |
+| 3 Zéro pavé | 1.56 km | +10 m (+0.6 %) | 6 min | 0 m | 52 m | 0 m | 0 | 0 m |
 
 ## Temps de calcul
 
-Requête complète (niveaux 0, 2 et 3, accrochage compris) sur cet ordinateur : 2 ms en moyenne, 5 ms au pire. Budget iPhone : 500 ms.
+Requête complète (niveaux 0, 2 et 3, accrochage compris) sur cet ordinateur : 6 ms en moyenne, 20 ms au pire. Budget iPhone : 500 ms.
 
 ## Pénalités utilisées
 

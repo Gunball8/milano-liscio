@@ -6,9 +6,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Router, type EdgePoint, type SearchResult } from '../src/core/astar.ts';
-import { type Tags, barrierBlocksBikes, directionalAccess } from '../src/core/classify.ts';
+import { type Tags, barrierBlocksBikes, wayAccess } from '../src/core/classify.ts';
 import { LEVELS, computeArcCosts } from '../src/core/cost.ts';
-import { FLAG_PUSH, type Graph, arcEdgeIndex, arcReversed, parseGraph } from '../src/core/graph.ts';
+import { FLAG_PUSH, type Graph, arcEdgeIndex, findArc, parseGraph } from '../src/core/graph.ts';
 import { assembleRoute, pointOnEdge } from '../src/core/route.ts';
 import { rng } from './helpers/graph.ts';
 
@@ -87,7 +87,16 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
     expect(unexplained).toEqual([]);
   });
 
-  it.skipIf(!existsSync(RAW))('never rides against a oneway (levels 0, 2, 3)', { timeout: 120_000 }, () => {
+  it('pedestrian rules: every edge both ways, never on foot', () => {
+    let oneWay = 0;
+    for (let e = 0; e < g.header.edgeCount; e++) if (findArc(g, e, false, g.edgeFrom[e]!) < 0 || findArc(g, e, true, g.edgeTo[e]!) < 0) oneWay++;
+    expect(oneWay).toBe(0);
+    let push = 0;
+    for (let a = 0; a < g.header.arcCount; a++) if (g.arcFlags[a]! & FLAG_PUSH) push++;
+    expect(push).toBe(0);
+  });
+
+  it.skipIf(!existsSync(RAW))('routes only use ways open to pedestrians or bikes', { timeout: 120_000 }, () => {
     const tagsById = new Map<number, Tags>();
     for (const e of (JSON.parse(readFileSync(RAW, 'utf8')) as { elements: { id: number; tags: Tags }[] }).elements) tagsById.set(e.id, e.tags);
     const violations: string[] = [];
@@ -96,11 +105,8 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
         const res = router.search(costs[lvl]!, a, b);
         if (!res) continue;
         for (const p of res.pieces) {
-          if (g.arcFlags[p.arc]! & FLAG_PUSH) continue;
           const wayId = g.wayId[g.edgeWay[arcEdgeIndex(g, p.arc)]!]!;
-          const acc = directionalAccess(tagsById.get(wayId)!);
-          const mode = arcReversed(g, p.arc) ? acc.backward : acc.forward;
-          if (mode !== 'ride') violations.push(`way ${wayId} ridden ${arcReversed(g, p.arc) ? 'backward' : 'forward'} (allowed: ${mode})`);
+          if (wayAccess(tagsById.get(wayId)!) !== 'ride') violations.push(`way ${wayId}`);
         }
       }
     }

@@ -100,7 +100,7 @@ async function main() {
     kept.map((k) => k.w),
     blocked,
   );
-  console.log(`${highways.length} highway ways, ${kept.length} usable by bike, ${edges.length} edges, ${blocked.size} closed gates`);
+  console.log(`${highways.length} highway ways, ${kept.length} usable (pedestrian rules, both ways), ${edges.length} edges, ${blocked.size} closed gates`);
   // Graph keys: the OSM node id, or a unique negative key per edge end at a closed gate.
   let nextKey = -1;
   const startKey = edges.map((e) => (blocked.has(e.startNode) ? nextKey-- : e.startNode));

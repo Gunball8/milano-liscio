@@ -93,3 +93,39 @@ Fluidité :
 - La hauteur des panneaux est observée sans recréer d'observateur à chaque rendu (le bandeau de suivi se redessine à chaque position).
 
 Téléchargement : GitHub compresse déjà les données. Le premier téléchargement fait environ 30 Mo réels pour 39 Mo sur le téléphone ; le fond de carte (21 Mo) est déjà compressé et ne peut pas l'être davantage sans perdre le zoom 15. Le bouton annonce maintenant le poids réel, et la progression s'affiche en pourcentage.
+
+---
+
+# Modèle d'accès piéton (25 novembre 2026)
+
+Demande : plus aucun sens interdit, raisonner comme un piéton pour esquiver le pavé, tout en étant à vélo.
+
+Avant, les règles vélo du cahier des charges s'appliquaient :
+- les 2 604 km de trottoirs étaient exclus ;
+- les 1 766 km de contresens étaient faits « à pied », chaque mètre comptant 3,5 fois ;
+- les 348 km de contresens sur les grands axes étaient interdits ;
+- les 1 170 km de voies piétonnes demandaient de descendre du vélo.
+
+Désormais, toute voie ouverte aux piétons ou aux vélos est roulable dans les deux sens, sans pénalité. Restent exclus :
+- les voies rapides ;
+- les voies interdites à la fois aux piétons et aux vélos (presque toutes les voies interdites aux vélos sont dans ce cas : trémies, bretelles) ;
+- les voies privées ;
+- les escaliers sans rampe ;
+- les portails fermés, tourniquets et chicanes étroites.
+
+Le réglage « Autoriser les passages à pied » disparaît, puisqu'il n'y a plus de passage à pied.
+
+Réseau : 9 443 km, tout dans les deux sens. Graphe : 13,8 → 18,2 Mo. Téléchargement complet : environ 32 Mo au lieu de 30. Démarrage du moteur : 65 → 90 ms sur Mac. Itinéraire complet : 6 à 15 ms.
+
+Effet sur 300 trajets aléatoires de 1,5 à 5 km à vol d'oiseau (centre et proche périphérie) :
+
+| Niveau | Distance moyenne | Pavé moyen | Rails (le long) | Trajets sans aucun pavé |
+|---|---|---|---|---|
+| Court | 4,14 → 3,89 km (−6 %) | 511 → 454 m | 493 → 412 m | 56 → 47 |
+| Équilibré | 4,33 → 3,97 km (−8 %) | 78 → 10 m | 44 → 3 m | 99 → 156 |
+| Lisse | 4,46 → 4,00 km (−10 %) | 36 → 5 m | 19 → 1 m | 130 → 199 |
+| Zéro pavé | 4,67 → 4,07 km (−13 %) | 14 → 1 m | 10 → 0 m | 199 → 253 |
+
+À noter :
+- **Trottoirs** : 72 % sont renseignés en asphalte et 4 % en dalles ou en pavé. Les 23 % sans revêtement indiqué gardent la pénalité « inconnu ».
+- **Bordures** : les bordures (`kerb`) restent franchissables ; un trottoir peut donc imposer de monter ou descendre une bordure.

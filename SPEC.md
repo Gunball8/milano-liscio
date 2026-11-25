@@ -155,6 +155,8 @@ pmtiles extract https://build.protomaps.com/<AAAAMMJJ>.pmtiles public/data/milan
 
 ### 6.1 Accès vélo
 
+> **Remplacé le 25/11/2026 à la demande du propriétaire : règles piéton, physique du vélo.** Toute voie ouverte aux piétons ou aux vélos est roulable dans les deux sens : plus de sens uniques, trottoirs (`footway=sidewalk`) et voies piétonnes inclus, plus aucun passage « à pied ». Restent exclus : `motorway*` et `trunk*` sans autorisation piéton ou vélo explicite, voies interdites à la fois aux piétons et aux vélos, `access=no/private` sans autorisation, escaliers sans rampe (`ramp:bicycle` ou `ramp:stroller`), quais, couloirs, chantiers. Portails : fermés s'ils sont verrouillés, privés ou interdits à tous ; tourniquets et passages en chicane étroite bloquent le vélo. Code : `wayAccess` et `barrierBlocksBikes` dans `src/core/classify.ts`. La table ci-dessous décrit le modèle d'origine.
+
 | Cas | Traitement |
 |---|---|
 | `motorway*`, `trunk*` sans `bicycle=yes`, `bicycle=no`, `access=no/private` sans autorisation vélo, `steps`, `construction`, `proposed` | Exclu |

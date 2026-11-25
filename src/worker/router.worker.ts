@@ -69,7 +69,6 @@ function route(req: Extract<Request, { type: 'route' }>) {
 function setOptions(prefs: Prefs) {
   const e = need(engine);
   e.speeds = { ride: prefs.speed, push: 4.5 };
-  e.setCostOptions({ allowPush: prefs.allowPush });
   e.setPenaltyFactors(prefs.factors);
   return true as const;
 }

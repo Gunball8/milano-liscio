@@ -40,11 +40,10 @@ export interface RouteResult {
 export interface Prefs {
   /** Average riding speed, km/h. */
   speed: number;
-  allowPush: boolean;
   factors: PenaltyFactors;
 }
 
-export const DEFAULT_PREFS: Prefs = { speed: 15, allowPush: true, factors: DEFAULT_FACTORS };
+export const DEFAULT_PREFS: Prefs = { speed: 15, factors: DEFAULT_FACTORS };
 
 /** A graph edge as shown in the segment sheet (SPEC §9.3). */
 export interface EdgeInfo {

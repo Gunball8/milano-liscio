@@ -46,10 +46,6 @@ export function SettingsSheet() {
           </span>
           <input type="range" min={10} max={25} step={1} value={prefs.speed} aria-label="Vitesse moyenne" onChange={(e) => update({ speed: Number(e.target.value) })} />
         </label>
-        <label className="switch-row">
-          <input type="checkbox" role="switch" checked={prefs.allowPush} onChange={(e) => update({ allowPush: e.target.checked })} />
-          Autoriser les passages à pied
-        </label>
         <h3>Pénalités avancées</h3>
         <p className="note">Multiplient la pénalité de chaque niveau. ×1 = valeurs d'origine.</p>
         {FACTORS.map(([key, label]) => (

@@ -95,57 +95,40 @@ export function hasTaggedRails(tags: Tags): boolean {
   return (tags['surface_bike'] ?? '').endsWith(':rails');
 }
 
+/**
+ * Access model (owner's choice, 2026-11-25, replaces SPEC §6.1): pedestrian rules, bike physics.
+ * A way is usable when a pedestrian or a cyclist may use it, in both directions and always ridden:
+ * no oneways, sidewalks and pedestrian areas included, never "walk the bike". Still out: motor roads,
+ * private or closed ways, stairs without a ramp, and what is not a way (platforms, corridors, works).
+ * 'push' stays in the type for the graph format (FLAG_PUSH) but is no longer produced.
+ */
 export type BikeMode = 'ride' | 'push' | 'excluded';
 
 const MOTOR_ONLY = new Set(['motorway', 'motorway_link', 'trunk', 'trunk_link']);
-const RIDEABLE = new Set([
+const USABLE = new Set([
   'primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link',
   'unclassified', 'residential', 'living_street', 'service', 'road',
-  'cycleway', 'track', 'path', 'pedestrian',
+  'cycleway', 'track', 'path', 'pedestrian', 'footway', 'bridleway',
 ]);
-const BIKE_ALLOWED = new Set(['yes', 'designated', 'permissive']);
-/** Roads above tertiary: riding or pushing against a oneway is not allowed. */
-const ABOVE_TERTIARY = new Set(['motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary', 'primary_link', 'secondary', 'secondary_link']);
+/** Explicit permission. */
+const ALLOWED = new Set(['yes', 'designated', 'permissive']);
+const FORBIDDEN = new Set(['no', 'private']);
 
-/** Direction-independent bike access (§6.1). */
-export function bikeAccess(tags: Tags): BikeMode {
+/** Access of a way, the same in both directions. */
+export function wayAccess(tags: Tags): BikeMode {
   const hw = tags['highway'];
-  if (!hw || hw === 'steps' || hw === 'construction' || hw === 'proposed') return 'excluded';
-  if (tags['bicycle'] === 'no') return 'excluded';
-  const bikeAllowed = BIKE_ALLOWED.has(tags['bicycle'] ?? '');
-  if (MOTOR_ONLY.has(hw)) return bikeAllowed ? 'ride' : 'excluded';
-  if ((tags['access'] === 'no' || tags['access'] === 'private') && !bikeAllowed) return 'excluded';
-  if (hw === 'footway') {
-    if (bikeAllowed) return 'ride';
-    if (tags['footway'] === 'sidewalk') return 'excluded';
-    return 'push';
-  }
-  if (RIDEABLE.has(hw)) return tags['bicycle'] === 'dismount' ? 'push' : 'ride';
-  return 'excluded';
-}
-
-/** 1: oneway along the way, -1: against it, 0: two-way (for bikes). */
-export function onewayForBikes(tags: Tags): 1 | -1 | 0 {
-  const bike = tags['oneway:bicycle'];
-  if (bike === 'no') return 0;
-  const v = bike ?? tags['oneway'];
-  if (v === 'yes' || v === '1' || v === 'true') return 1;
-  if (v === '-1' || v === 'reverse') return -1;
-  if (v === 'no' || v === 'false' || v === '0') return 0;
-  if (tags['junction'] === 'roundabout' || tags['junction'] === 'circular') return 1;
-  return 0;
-}
-
-const OPPOSITE_KEYS = ['cycleway', 'cycleway:left', 'cycleway:right', 'cycleway:both'];
-
-/** Contraflow cycling explicitly allowed (`cycleway*=opposite*` or a contraflow lane). */
-export function contraflowAllowed(tags: Tags): boolean {
-  for (const k of OPPOSITE_KEYS) {
-    if ((tags[k] ?? '').startsWith('opposite')) return true;
-    const ow = tags[`${k}:oneway`];
-    if (k !== 'cycleway' && (ow === '-1' || ow === 'no')) return true;
-  }
-  return false;
+  if (!hw) return 'excluded';
+  const foot = tags['foot'] ?? '';
+  const bike = tags['bicycle'] ?? '';
+  const explicit = ALLOWED.has(foot) || ALLOWED.has(bike);
+  // stairs: only with a ramp to roll the bike on
+  if (hw === 'steps') return tags['ramp:bicycle'] === 'yes' || tags['ramp:stroller'] === 'yes' || ALLOWED.has(bike) ? 'ride' : 'excluded';
+  if (MOTOR_ONLY.has(hw)) return explicit ? 'ride' : 'excluded';
+  if (!USABLE.has(hw)) return 'excluded';
+  if (FORBIDDEN.has(tags['access'] ?? '') && !explicit) return 'excluded';
+  // closed to pedestrians and to bikes (road tunnels, expressway ramps); a footway closed to pedestrians
+  if (FORBIDDEN.has(foot) && (FORBIDDEN.has(bike) || (hw === 'footway' && !ALLOWED.has(bike)))) return 'excluded';
+  return 'ride';
 }
 
 export interface DirectionalAccess {
@@ -153,37 +136,34 @@ export interface DirectionalAccess {
   backward: BikeMode;
 }
 
-/**
- * Access per direction (§6.1): against a oneway, riding is allowed with `oneway:bicycle=no` or an
- * opposite cycle lane; otherwise pushing on roads up to tertiary, nothing above.
- * Pushing ignores oneways (a pedestrian may walk both ways).
- */
+/** Access per direction: oneways do not apply (pedestrian rules), so both directions match. */
 export function directionalAccess(tags: Tags): DirectionalAccess {
-  const base = bikeAccess(tags);
-  if (base !== 'ride') return { forward: base, backward: base };
-  const ow = onewayForBikes(tags);
-  if (ow === 0) return { forward: 'ride', backward: 'ride' };
-  const contra: BikeMode = contraflowAllowed(tags) ? 'ride' : ABOVE_TERTIARY.has(tags['highway'] ?? '') ? 'excluded' : 'push';
-  return ow === 1 ? { forward: 'ride', backward: contra } : { forward: contra, backward: 'ride' };
+  const m = wayAccess(tags);
+  return { forward: m, backward: m };
 }
 
-/** Barriers bikes can never get through, whatever the access tags. */
-const ALWAYS_BLOCKING = new Set(['turnstile', 'full-height_turnstile', 'stile', 'fence', 'wall', 'wire_fence', 'retaining_wall', 'hedge']);
+/** Barriers a bike cannot get through, whatever the access tags. */
+const ALWAYS_BLOCKING = new Set(['turnstile', 'full-height_turnstile', 'stile', 'kissing_gate', 'fence', 'wall', 'wire_fence', 'retaining_wall', 'hedge']);
 /** Barriers that close a passage when access is restricted (gates and similar). */
 const GATES = new Set(['gate', 'lift_gate', 'swing_gate', 'sliding_gate', 'chain', 'hampshire_gate', 'wicket_gate', 'bump_gate', 'spikes']);
 
 /**
- * True when a barrier node closes the way to bikes (audit 2026-11-25: ~620 private gates and ~140
- * locked ones sat on the network). A gate is closed when private, forbidden, locked or bicycle=no,
- * unless bikes are explicitly allowed. Bollards, kerbs, blocks and cycle barriers stay passable.
+ * True when a barrier node closes the way (audit 2026-11-25: ~620 private gates and ~140 locked ones
+ * sat on the network). Pedestrian rules: a gate is closed when locked, private or forbidden to all,
+ * unless pedestrians or bikes are explicitly allowed; bicycle=no alone no longer closes it. Turnstiles
+ * and stiles stop a bike. Bollards, kerbs, blocks and cycle barriers stay passable.
  */
 export function barrierBlocksBikes(tags: Tags): boolean {
   const b = tags['barrier'];
   if (!b) return false;
-  if (BIKE_ALLOWED.has(tags['bicycle'] ?? '')) return false;
+  const foot = tags['foot'] ?? '';
+  const bike = tags['bicycle'] ?? '';
+  if (ALLOWED.has(bike)) return false;
   if (ALWAYS_BLOCKING.has(b)) return true;
   if (!GATES.has(b)) return false;
-  return tags['locked'] === 'yes' || tags['bicycle'] === 'no' || tags['access'] === 'no' || tags['access'] === 'private';
+  if (tags['locked'] === 'yes') return true;
+  if (ALLOWED.has(foot)) return false;
+  return FORBIDDEN.has(tags['access'] ?? '') || (FORBIDDEN.has(foot) && FORBIDDEN.has(bike));
 }
 
 /** Audit grouping of highway values. */

@@ -1,3 +1,5 @@
+> **25/11/2026 : modèle d'accès piéton.** Les commentaires ci-dessous datent des règles vélo (contresens et voies piétonnes « à pied », trottoirs exclus). Les tableaux générés plus bas reflètent le graphe actuel, où tout se roule dans les deux sens.
+
 ## Lecture et décisions proposées (phase 1)
 
 Rédigé le 2026-11-24. Les points marqués **à valider** attendent ta réponse avant la phase 2.

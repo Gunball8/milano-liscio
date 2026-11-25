@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   barrierBlocksBikes,
-  bikeAccess,
   classifySurfaceValue,
   classifyWaySurface,
   directionalAccess,
@@ -9,7 +8,7 @@ import {
   hasTaggedRails,
   isCarriageway,
   isPresentRail,
-  onewayForBikes,
+  wayAccess,
 } from '../src/core/classify.ts';
 
 describe('classifySurfaceValue (SPEC §6.2)', () => {
@@ -80,26 +79,34 @@ describe('classifyWaySurface', () => {
   });
 });
 
-describe('bikeAccess (SPEC §6.1)', () => {
+describe('wayAccess: pedestrian rules, bike physics (2026-11-25)', () => {
   it.each([
     [{ highway: 'motorway' }, 'excluded'],
+    [{ highway: 'trunk' }, 'excluded'],
     [{ highway: 'trunk', bicycle: 'yes' }, 'ride'],
-    [{ highway: 'residential', bicycle: 'no' }, 'excluded'],
+    [{ highway: 'trunk', foot: 'no', bicycle: 'no' }, 'excluded'],
+    [{ highway: 'primary', foot: 'no', bicycle: 'no' }, 'excluded'],
+    [{ highway: 'primary', foot: 'no' }, 'ride'],
+    [{ highway: 'residential', bicycle: 'no' }, 'ride'],
     [{ highway: 'service', access: 'private' }, 'excluded'],
-    [{ highway: 'service', access: 'private', bicycle: 'yes' }, 'ride'],
+    [{ highway: 'service', access: 'private', foot: 'yes' }, 'ride'],
+    [{ highway: 'service', access: 'no', bicycle: 'yes' }, 'ride'],
     [{ highway: 'steps' }, 'excluded'],
+    [{ highway: 'steps', 'ramp:bicycle': 'yes' }, 'ride'],
     [{ highway: 'construction' }, 'excluded'],
     [{ highway: 'primary' }, 'ride'],
     [{ highway: 'pedestrian' }, 'ride'],
-    [{ highway: 'pedestrian', bicycle: 'dismount' }, 'push'],
-    [{ highway: 'footway', bicycle: 'designated' }, 'ride'],
-    [{ highway: 'footway', footway: 'sidewalk' }, 'excluded'],
-    [{ highway: 'footway', footway: 'sidewalk', bicycle: 'yes' }, 'ride'],
-    [{ highway: 'footway' }, 'push'],
-    [{ highway: 'footway', footway: 'crossing' }, 'push'],
+    [{ highway: 'pedestrian', bicycle: 'dismount' }, 'ride'],
+    [{ highway: 'footway' }, 'ride'],
+    [{ highway: 'footway', footway: 'sidewalk' }, 'ride'],
+    [{ highway: 'footway', footway: 'crossing' }, 'ride'],
+    [{ highway: 'footway', foot: 'private' }, 'excluded'],
+    [{ highway: 'cycleway', foot: 'no' }, 'ride'],
+    [{ highway: 'path', bicycle: 'no' }, 'ride'],
     [{ highway: 'platform' }, 'excluded'],
+    [{ highway: 'corridor' }, 'excluded'],
   ] as const)('%o -> %s', (tags, mode) => {
-    expect(bikeAccess(tags)).toBe(mode);
+    expect(wayAccess(tags)).toBe(mode);
   });
 });
 
@@ -144,33 +151,14 @@ describe('tagged rails', () => {
   });
 });
 
-describe('oneways and contraflow (§6.1)', () => {
-  it.each([
-    [{ oneway: 'yes' }, 1],
-    [{ oneway: '1' }, 1],
-    [{ oneway: '-1' }, -1],
-    [{ junction: 'roundabout' }, 1],
-    [{ oneway: 'yes', 'oneway:bicycle': 'no' }, 0],
-    [{ 'oneway:bicycle': 'yes' }, 1],
-    [{}, 0],
-  ] as const)('%o -> %i', (tags, dir) => {
-    expect(onewayForBikes(tags)).toBe(dir);
+describe('directions (pedestrian rules)', () => {
+  it('oneways apply to neither direction', () => {
+    expect(directionalAccess({ highway: 'residential', oneway: 'yes' })).toEqual({ forward: 'ride', backward: 'ride' });
+    expect(directionalAccess({ highway: 'primary', oneway: '-1' })).toEqual({ forward: 'ride', backward: 'ride' });
+    expect(directionalAccess({ highway: 'secondary', junction: 'roundabout' })).toEqual({ forward: 'ride', backward: 'ride' });
   });
-
-  it('contraflow on a residential oneway is pushed', () => {
-    expect(directionalAccess({ highway: 'residential', oneway: 'yes' })).toEqual({ forward: 'ride', backward: 'push' });
-    expect(directionalAccess({ highway: 'tertiary', oneway: '-1' })).toEqual({ forward: 'push', backward: 'ride' });
-  });
-  it('contraflow is ridden with oneway:bicycle=no or an opposite lane', () => {
-    expect(directionalAccess({ highway: 'residential', oneway: 'yes', 'oneway:bicycle': 'no' })).toEqual({ forward: 'ride', backward: 'ride' });
-    expect(directionalAccess({ highway: 'residential', oneway: 'yes', cycleway: 'opposite_lane' })).toEqual({ forward: 'ride', backward: 'ride' });
-    expect(directionalAccess({ highway: 'secondary', oneway: 'yes', 'cycleway:left': 'lane', 'cycleway:left:oneway': '-1' })).toEqual({ forward: 'ride', backward: 'ride' });
-  });
-  it('contraflow above tertiary is excluded', () => {
-    expect(directionalAccess({ highway: 'primary', oneway: 'yes' })).toEqual({ forward: 'ride', backward: 'excluded' });
-  });
-  it('pushed ways ignore oneways', () => {
-    expect(directionalAccess({ highway: 'footway', oneway: 'yes' })).toEqual({ forward: 'push', backward: 'push' });
+  it('an excluded way is excluded both ways', () => {
+    expect(directionalAccess({ highway: 'motorway', oneway: 'yes' })).toEqual({ forward: 'excluded', backward: 'excluded' });
   });
 });
 
@@ -179,7 +167,11 @@ describe('barriers (audit 2026-11-25)', () => {
     [{ barrier: 'gate', access: 'private' }, true],
     [{ barrier: 'gate', access: 'no' }, true],
     [{ barrier: 'gate', locked: 'yes' }, true],
-    [{ barrier: 'lift_gate', bicycle: 'no' }, true],
+    [{ barrier: 'lift_gate', bicycle: 'no' }, false],
+    [{ barrier: 'gate', foot: 'no', bicycle: 'no' }, true],
+    [{ barrier: 'gate', access: 'private', foot: 'yes' }, false],
+    [{ barrier: 'gate', locked: 'yes', foot: 'yes' }, true],
+    [{ barrier: 'kissing_gate' }, true],
     [{ barrier: 'gate', access: 'private', bicycle: 'yes' }, false],
     [{ barrier: 'gate' }, false],
     [{ barrier: 'gate', access: 'customers' }, false],

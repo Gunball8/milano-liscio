@@ -18,7 +18,7 @@ import {
   type SurfaceClass,
   type SurfaceResult,
   type Tags,
-  bikeAccess,
+  wayAccess,
   classifyWaySurface,
   isArea,
   isCarriageway,
@@ -175,7 +175,7 @@ async function main() {
     return {
       w,
       tags,
-      mode: bikeAccess(tags),
+      mode: wayAccess(tags),
       group: roadGroup(tags),
       surf: classifyWaySurface(tags),
       area: isArea(tags),
