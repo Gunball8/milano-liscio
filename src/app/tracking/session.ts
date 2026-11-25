@@ -7,6 +7,7 @@ import { type WakeLockLike, ScreenLock } from '../../core/screenLock.ts';
 import { ARRIVAL_M, GOOD_ACCURACY_M, OffRouteDetector, ROTATE_ABOVE_MPS, RouteTracker, courseFrom } from '../../core/tracking.ts';
 import { addReport, listReports } from '../../storage/idb.ts';
 import { startCompass } from '../compass.ts';
+import { clearRoute, computeRoute } from '../routing/actions.ts';
 import { call } from '../routing/client.ts';
 import { type TrackingState, useApp } from '../store.ts';
 
@@ -157,12 +158,16 @@ export async function startTracking() {
 }
 
 export async function stopTracking() {
+  const arrived = get().tracking?.arrived ?? false;
   stopWatch();
   document.removeEventListener('visibilitychange', onVisibility);
   await lock?.disable();
   lock = null;
   tracker = null;
   set({ mode: 'map', tracking: null });
+  // Arrived: the trip is over. Stopped on the way: bring back the four levels for the same trip.
+  if (arrived) clearRoute();
+  else void computeRoute();
 }
 
 /** Big "Signaler" button: position, heading and time go to the list to sort. No typing while riding. */

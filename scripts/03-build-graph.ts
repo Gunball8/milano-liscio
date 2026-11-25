@@ -12,6 +12,7 @@ import path from 'node:path';
 import {
   type BikeMode,
   SURFACE_CLASSES,
+  barrierBlocksBikes,
   SURFACE_CODE,
   type Tags,
   directionalAccess,
@@ -89,8 +90,21 @@ async function main() {
   const kept = highways
     .map((w) => ({ w, tags: w.tags as Tags, acc: directionalAccess(w.tags as Tags) }))
     .filter((k) => k.acc.forward !== 'excluded' || k.acc.backward !== 'excluded');
-  const edges = splitIntoEdges(kept.map((k) => k.w));
-  console.log(`${highways.length} highway ways, ${kept.length} usable by bike, ${edges.length} edges`);
+
+  // Closed gates: split there and do not connect the edges meeting at them (see barrierBlocksBikes).
+  const onKept = new Set<number>();
+  for (const k of kept) for (const n of k.w.nodes) onKept.add(n);
+  const blocked = new Set<number>();
+  for (const n of await readRaw('nodes')) if (n.type === 'node' && n.tags && onKept.has(n.id) && barrierBlocksBikes(n.tags)) blocked.add(n.id);
+  const edges = splitIntoEdges(
+    kept.map((k) => k.w),
+    blocked,
+  );
+  console.log(`${highways.length} highway ways, ${kept.length} usable by bike, ${edges.length} edges, ${blocked.size} closed gates`);
+  // Graph keys: the OSM node id, or a unique negative key per edge end at a closed gate.
+  let nextKey = -1;
+  const startKey = edges.map((e) => (blocked.has(e.startNode) ? nextKey-- : e.startNode));
+  const endKey = edges.map((e) => (blocked.has(e.endNode) ? nextKey-- : e.endNode));
 
   // 2. rails
   const presentRails = railWays.filter((w) => isPresentRail(w.tags ?? {}));
@@ -101,15 +115,16 @@ async function main() {
 
   // 3. connectivity: keep the largest component
   const uf = new UnionFind();
-  for (const e of edges) uf.union(e.startNode, e.endNode);
+  edges.forEach((_, i) => uf.union(startKey[i]!, endKey[i]!));
   const compSize = new Map<number, number>();
-  for (const e of edges) {
-    const r = uf.find(e.startNode);
+  edges.forEach((e, i) => {
+    const r = uf.find(startKey[i]!);
     compSize.set(r, (compSize.get(r) ?? 0) + e.length);
-  }
+  });
   const [mainRoot, mainLen] = [...compSize.entries()].sort((a, b) => b[1] - a[1])[0]!;
   const totalLen = [...compSize.values()].reduce((a, b) => a + b, 0);
-  const mainEdges = edges.filter((e) => uf.find(e.startNode) === mainRoot);
+  const mainIdx = edges.map((_, i) => i).filter((i) => uf.find(startKey[i]!) === mainRoot);
+  const mainEdges = mainIdx.map((i) => edges[i]!);
   console.log(
     `largest component: ${(mainLen / 1000).toFixed(0)} km of ${(totalLen / 1000).toFixed(0)} km (${compSize.size - 1} small components dropped, ${((totalLen - mainLen) / 1000).toFixed(1)} km)`,
   );
@@ -146,8 +161,8 @@ async function main() {
   mainEdges.forEach((e, ei) => {
     const k = kept[e.wayIdx]!;
     const n = e.ll.length / 2;
-    const from = nodeOf(e.startNode, e.ll[0]!, e.ll[1]!);
-    const to = nodeOf(e.endNode, e.ll[2 * n - 2]!, e.ll[2 * n - 1]!);
+    const from = nodeOf(startKey[mainIdx[ei]!]!, e.ll[0]!, e.ll[1]!);
+    const to = nodeOf(endKey[mainIdx[ei]!]!, e.ll[2 * n - 2]!, e.ll[2 * n - 1]!);
     let wi = wayIndex.get(e.wayIdx);
     if (wi === undefined) {
       wi = graphWays.length;

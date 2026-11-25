@@ -7,6 +7,7 @@
  * Data must be built first (pnpm data:build). GitHub refuses files over 100 MB.
  */
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,8 +24,12 @@ const base = `/${repo}/`;
 
 const manifest = path.join(ROOT, 'public/data/manifest.json');
 if (!existsSync(manifest)) throw new Error('public/data/manifest.json missing: run "pnpm data:build" first');
-for (const f of (JSON.parse(readFileSync(manifest, 'utf8')) as { files: { name: string; size: number }[] }).files) {
+// The app refuses any file whose size or SHA-256 differs from the manifest: never publish a stale one.
+for (const f of (JSON.parse(readFileSync(manifest, 'utf8')) as { files: { name: string; size: number; sha256: string }[] }).files) {
+  const file = path.join(ROOT, 'public/data', f.name);
   if (f.size > 95e6) throw new Error(`${f.name} is ${(f.size / 1e6).toFixed(0)} MB: too close to GitHub's 100 MB limit`);
+  const sha = createHash('sha256').update(readFileSync(file)).digest('hex');
+  if (statSync(file).size !== f.size || sha !== f.sha256) throw new Error(`${f.name} does not match data/manifest.json: run "pnpm data:manifest"`);
 }
 
 console.log(`build with base ${base}`);
@@ -35,6 +40,22 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'liscio-pages-'));
 try {
   cpSync(path.join(ROOT, 'dist'), tmp, { recursive: true });
   writeFileSync(path.join(tmp, '.nojekyll'), ''); // serve every file as is
+  // Keep the previous version's hashed assets (only those): a cached copy of the old index.html, or an
+  // open tab still running it, then finds its scripts until it reloads.
+  try {
+    sh('git', ['fetch', '-q', remote, 'gh-pages']);
+    const oldSw = sh('git', ['show', 'FETCH_HEAD:sw.js']);
+    let kept = 0;
+    for (const f of new Set([...oldSw.matchAll(/assets\/[A-Za-z0-9._-]+/g)].map((x) => x[0]))) {
+      const dest = path.join(tmp, f);
+      if (existsSync(dest)) continue;
+      writeFileSync(dest, execFileSync('git', ['show', `FETCH_HEAD:${f}`], { cwd: ROOT }));
+      kept++;
+    }
+    console.log(`kept ${kept} asset(s) of the previous version`);
+  } catch {
+    console.log('no previous version to keep (first deploy)');
+  }
   sh('git', ['init', '-q', '-b', 'gh-pages'], tmp);
   sh('git', ['add', '-A'], tmp);
   sh('git', ['commit', '-q', '-m', `Deploy ${sha}`], tmp);

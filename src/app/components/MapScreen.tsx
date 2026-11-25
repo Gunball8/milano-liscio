@@ -14,6 +14,7 @@ import { SearchPanel } from './SearchPanel.tsx';
 import { SearchSheet } from './SearchSheet.tsx';
 import { SettingsSheet } from './SettingsSheet.tsx';
 import { Toast } from './Toast.tsx';
+import { UpdateBanner } from './UpdateBanner.tsx';
 import { TrackingOverlay } from './TrackingOverlay.tsx';
 
 /** Map screen (SPEC §9.1) with its tracking (§9.2) and corrections (§9.3) modes. */
@@ -53,6 +54,7 @@ export function MapScreen() {
         </>
       )}
       <Toast />
+      <UpdateBanner />
     </>
   );
 }

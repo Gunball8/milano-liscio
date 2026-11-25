@@ -141,7 +141,8 @@ export function SearchSheet() {
 }
 
 function StarToggle({ label, lon, lat }: { label: string; lon: number; lat: number }) {
-  const fav = useApp((s) => !!favoriteAt(lon, lat) && s.favorites.length >= 0);
+  useApp((s) => s.favorites); // re-render when favourites change
+  const fav = !!favoriteAt(lon, lat);
   return (
     <button
       type="button"

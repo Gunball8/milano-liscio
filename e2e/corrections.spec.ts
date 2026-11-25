@@ -3,7 +3,7 @@
  * route at the next calculation; export then import restores the corrections exactly.
  * Plus reports to sort and settings (SPEC §9.3, §9.4).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { firstLaunch, waitForMap, waitForState } from './helpers.ts';
 
@@ -36,7 +36,7 @@ async function tapAt(page: Page, [lon, lat]: [number, number]) {
   await page.mouse.click(box.x + p.x, box.y + p.y);
 }
 
-test('marking a smooth street of the route as pavé changes the level-2 route; backup round-trip', async ({ page }) => {
+test('marking a smooth street of the route as pavé changes the level-2 route; backup round-trip', async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem('liscio.downloadOnly', '1'));
   await firstLaunch(page);
   await waitForState(page, "s.engine === 'ready'");
@@ -52,6 +52,7 @@ test('marking a smooth street of the route as pavé changes the level-2 route; b
   await tapAt(page, mid);
   const sheet = page.getByRole('region', { name: 'Tronçon' });
   await expect(sheet).toBeVisible();
+  expect(await state<number>(page, 's.level')).toBe(2); // a tap in Corrections never changes the level
   await expect(sheet.getByRole('radiogroup', { name: 'Revêtement' }).getByRole('radio', { name: 'Lisse' })).toHaveAttribute('aria-checked', 'true');
   const whole = sheet.getByRole('switch', { name: /Appliquer à toute la rue/ });
   if (await whole.isEnabled()) {
@@ -97,10 +98,28 @@ test('marking a smooth street of the route as pavé changes the level-2 route; b
   const restored = await state<Rec[]>(page, '[...s.corrections].sort((a, b) => a.id.localeCompare(b.id))');
   expect(restored).toEqual(original);
 
+  // A backup file is untrusted: malformed records are skipped.
+  const mixed = info.outputPath('mixed-backup.json');
+  writeFileSync(
+    mixed,
+    JSON.stringify({
+      app: 'milano-liscio',
+      kind: 'backup',
+      version: 1,
+      corrections: [
+        { ...backup.corrections[0], id: 'valid-extra', createdAt: 1 },
+        { id: 'broken', wayId: 'not-a-number', mid: [9.19], surface: 'LAVA', createdAt: 2 },
+      ],
+    }),
+  );
+  await page.getByLabel('Fichier de sauvegarde').setInputFiles(mixed);
+  await expect(page.getByRole('status').filter({ hasText: 'importée' })).toContainText('1 correction importée, 1 ignorée');
+  expect(await state<boolean>(page, "s.corrections.some((c) => c.id === 'broken')")).toBe(false);
+
   // GeoJSON export for OSM.
   const [geo] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exporter pour OSM (GeoJSON)' }).click()]);
   const fc = JSON.parse(readFileSync(await geo.path(), 'utf8')) as { features: { properties: { osm_way: string; surface_osm_suggere: string } }[] };
-  expect(fc.features).toHaveLength(original.length);
+  expect(fc.features).toHaveLength(original.length + 1);
   expect(fc.features[0]!.properties.osm_way).toMatch(/^https:\/\/www\.openstreetmap\.org\/way\/\d+$/);
   expect(fc.features[0]!.properties.surface_osm_suggere).toBe('sett');
 });

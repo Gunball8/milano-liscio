@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "data:fetch": "tsx scripts/01-fetch-osm.ts",
     "data:audit": "tsx scripts/02-audit.ts",
-    "data:graph": "tsx scripts/03-build-graph.ts",
+    "data:graph": "tsx scripts/03-build-graph.ts && pnpm data:manifest",
     "data:basemap": "tsx scripts/05-build-basemap.ts",
     "data:manifest": "tsx scripts/06-build-manifest.ts",
     "data:build": "pnpm data:fetch && pnpm data:graph && pnpm data:geocoder && pnpm data:basemap && pnpm data:manifest",
@@ -20,7 +20,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.sw.json && tsc --noEmit -p tsconfig.e2e.json",
-    "data:geocoder": "tsx scripts/04-build-geocoder.ts",
+    "data:geocoder": "tsx scripts/04-build-geocoder.ts && pnpm data:manifest",
     "deploy": "tsx scripts/deploy.ts",
     "data:refresh": "pnpm data:fetch --refresh && pnpm data:graph && pnpm data:geocoder && pnpm data:basemap --refresh && pnpm data:manifest"
   },

@@ -104,6 +104,8 @@ export interface AppState {
   compass: number | null;
   /** One-off camera request (locate button); nonce makes repeated taps count. */
   flyTo: { lon: number; lat: number; zoom: number; nonce: number } | null;
+  /** A new version of the app took over: offer a reload (never during tracking). */
+  appUpdated: boolean;
 }
 
 export const useApp = create<AppState>(() => ({
@@ -145,6 +147,7 @@ export const useApp = create<AppState>(() => ({
   surfaceZoomOk: true,
   compass: null,
   flyTo: null,
+  appUpdated: false,
 }));
 
 // Exposed for end-to-end tests and debugging from the console.

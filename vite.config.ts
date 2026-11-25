@@ -16,6 +16,7 @@ export default defineConfig({
       filename: 'sw.ts',
       injectRegister: false,
       manifest: {
+        id: base,
         name: 'Milano Liscio',
         short_name: 'Liscio',
         description: 'Itinéraires vélo sans pavé ni rails à Milan, hors-ligne.',

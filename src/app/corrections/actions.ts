@@ -193,7 +193,43 @@ export async function exportBackup() {
   await saveFile(`milano-liscio-sauvegarde-${today()}.json`, 'application/json', JSON.stringify(backup, null, 2));
 }
 
-/** Restores a backup: records are merged by id, nothing is deleted. */
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length < 500;
+
+/** Keeps only well-formed records: a backup file is untrusted input. */
+function cleanCorrection(c: unknown): CorrectionRecord | null {
+  const r = c as Partial<CorrectionRecord>;
+  if (!r || !isStr(r.id) || !isNum(r.wayId) || !Array.isArray(r.mid) || !isNum(r.mid[0]) || !isNum(r.mid[1]) || !isNum(r.createdAt)) return null;
+  if (r.surface !== undefined && !['SMOOTH', 'SLABS', 'PAVE'].includes(r.surface)) return null;
+  if (r.rails !== undefined && typeof r.rails !== 'boolean') return null;
+  if (r.surface === undefined && r.rails === undefined) return null;
+  return {
+    id: r.id,
+    wayId: r.wayId,
+    mid: [r.mid[0], r.mid[1]],
+    length: isNum(r.length) ? r.length : 0,
+    name: typeof r.name === 'string' ? r.name.slice(0, 200) : null,
+    ...(r.surface !== undefined ? { surface: r.surface } : {}),
+    ...(r.rails !== undefined ? { rails: r.rails } : {}),
+    ...(typeof r.note === 'string' ? { note: r.note.slice(0, 1000) } : {}),
+    source: r.source === 'report' ? 'report' : 'manual',
+    createdAt: r.createdAt,
+  };
+}
+
+function cleanReport(x: unknown): Report | null {
+  const r = x as Partial<Report>;
+  if (!r || !isStr(r.id) || !isNum(r.lon) || !isNum(r.lat) || !isNum(r.at)) return null;
+  return { id: r.id, lon: r.lon, lat: r.lat, at: r.at, heading: isNum(r.heading) ? r.heading : null, accuracy: isNum(r.accuracy) ? r.accuracy : null, status: r.status === 'done' ? 'done' : 'todo' };
+}
+
+function cleanFavorite(x: unknown): Backup['favorites'][number] | null {
+  const f = x as Partial<Backup['favorites'][number]>;
+  if (!f || !isStr(f.id) || !isStr(f.name) || !isNum(f.lon) || !isNum(f.lat)) return null;
+  return { id: f.id, name: f.name.slice(0, 120), lon: f.lon, lat: f.lat, createdAt: isNum(f.createdAt) ? f.createdAt : Date.now() };
+}
+
+/** Restores a backup: records are merged by id, nothing is deleted. Malformed records are skipped. */
 export async function importBackup(file: File) {
   let data: Partial<Backup>;
   try {
@@ -206,13 +242,18 @@ export async function importBackup(file: File) {
     toast("Ce fichier n'est pas une sauvegarde Milano Liscio.");
     return;
   }
-  await putCorrections(data.corrections);
-  if (Array.isArray(data.reports)) await putReports(data.reports);
-  if (Array.isArray(data.favorites)) await putFavorites(data.favorites);
+  const corrections = data.corrections.map(cleanCorrection).filter((c): c is CorrectionRecord => !!c);
+  const reports = (Array.isArray(data.reports) ? data.reports : []).map(cleanReport).filter((r): r is Report => !!r);
+  const favorites = (Array.isArray(data.favorites) ? data.favorites : []).map(cleanFavorite).filter((f) => !!f);
+  const skipped = data.corrections.length - corrections.length;
+  await putCorrections(corrections);
+  await putReports(reports);
+  await putFavorites(favorites as Backup['favorites']);
   set({ favorites: await listFavorites() });
   await loadReports();
   await reloadCorrections();
-  toast(`${data.corrections.length} correction${data.corrections.length > 1 ? 's' : ''} importée${data.corrections.length > 1 ? 's' : ''}`);
+  const n = corrections.length;
+  toast(`${n} correction${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}${skipped > 0 ? `, ${skipped} ignorée${skipped > 1 ? 's' : ''} (invalide${skipped > 1 ? 's' : ''})` : ''}`);
 }
 
 const OSM_SURFACE: Record<CorrectedSurface, string> = { SMOOTH: 'asphalt', SLABS: 'paving_stones', PAVE: 'sett' };

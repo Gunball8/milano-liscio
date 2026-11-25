@@ -36,7 +36,7 @@ async function init(version: string): Promise<InitInfo> {
     lookup = new EdgeLookup(engine.graph);
     overrides = new Map();
     wayTags = null;
-    for (const level of [0, 2, 3]) engine.costsFor(level);
+    for (const level of [0, 1, 2, 3]) engine.costsFor(level); // every request computes the four levels
     loadedVersion = version;
   }
   return { ms: Math.round(performance.now() - t0), nodes: engine!.graph.header.nodeCount, places: geocoder!.entryCount };

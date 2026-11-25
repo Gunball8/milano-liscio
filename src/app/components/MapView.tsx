@@ -106,7 +106,7 @@ function installLongPress(map: MapLibreMap) {
     start = null;
   };
   map.on('touchstart', (e) => {
-    if (e.originalEvent.touches.length !== 1 || useApp.getState().mode === 'tracking') return cancel();
+    if (e.originalEvent.touches.length !== 1 || useApp.getState().mode !== 'map') return cancel();
     start = { x: e.point.x, y: e.point.y };
     const { lng, lat } = e.lngLat;
     const { x, y } = e.point;
@@ -126,7 +126,7 @@ function installLongPress(map: MapLibreMap) {
   map.on('contextmenu', (e) => {
     e.preventDefault();
     cancel();
-    if (useApp.getState().mode === 'tracking') return;
+    if (useApp.getState().mode !== 'map') return; // the menu only exists on the map screen
     void openMenu(e.lngLat.lng, e.lngLat.lat, e.point.x, e.point.y);
   });
 }
@@ -190,6 +190,7 @@ export function MapView() {
           if (useApp.getState().mode === 'corrections') void selectEdgeAt(ev.lngLat.lng, ev.lngLat.lat);
         });
         m.on('click', ALT_HIT_LAYER, (ev) => {
+          if (useApp.getState().mode !== 'map') return; // corrections: a tap picks a street, not a level
           const level = ev.features?.[0]?.properties?.['level'];
           if (level !== undefined) selectAlternative(Number(level));
         });

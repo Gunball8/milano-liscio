@@ -63,3 +63,5 @@ The audit map is `docs/audit-map.html` (open in a browser, needs `audit-map.data
 - Design (2026-11-25): tokens and glass surfaces in `src/app/styles.css`, icons in `components/Icon.tsx`. One level choice: four cards (all four levels computed per request, ~2 ms more) instead of the brief's selector + alternatives, which users found redundant.
 - Position marker: `map/meLayer.ts`, arrow turned by the compass (`app/compass.ts`, permission asked from a tap: locate button or Démarrer), else by the course while tracking; dot when no direction. Chromium also has `DeviceOrientationEvent.requestPermission`, so tests grant accelerometer/gyroscope/magnetometer.
 - Map attribution is bottom-left (the locate button is bottom-right).
+- Closed gates (barrier + access=private/no, locked=yes, bicycle=no, turnstiles) cut the graph: split there, ends not connected (`barrierBlocksBikes`, 625 on the network). Audit report: `docs/audit-app.md`.
+- `pnpm data:graph` and `pnpm data:geocoder` refresh the manifest; `pnpm run deploy` refuses data that does not match it (a stale SHA-256 makes the app refuse the download).

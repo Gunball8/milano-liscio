@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  barrierBlocksBikes,
   bikeAccess,
   classifySurfaceValue,
   classifyWaySurface,
@@ -170,5 +171,23 @@ describe('oneways and contraflow (§6.1)', () => {
   });
   it('pushed ways ignore oneways', () => {
     expect(directionalAccess({ highway: 'footway', oneway: 'yes' })).toEqual({ forward: 'push', backward: 'push' });
+  });
+});
+
+describe('barriers (audit 2026-11-25)', () => {
+  it.each([
+    [{ barrier: 'gate', access: 'private' }, true],
+    [{ barrier: 'gate', access: 'no' }, true],
+    [{ barrier: 'gate', locked: 'yes' }, true],
+    [{ barrier: 'lift_gate', bicycle: 'no' }, true],
+    [{ barrier: 'gate', access: 'private', bicycle: 'yes' }, false],
+    [{ barrier: 'gate' }, false],
+    [{ barrier: 'gate', access: 'customers' }, false],
+    [{ barrier: 'turnstile' }, true],
+    [{ barrier: 'bollard' }, false],
+    [{ barrier: 'cycle_barrier' }, false],
+    [{ barrier: 'kerb' }, false],
+  ] as const)('%o blocks bikes: %s', (tags, blocked) => {
+    expect(barrierBlocksBikes(tags)).toBe(blocked);
   });
 });

@@ -167,6 +167,25 @@ export function directionalAccess(tags: Tags): DirectionalAccess {
   return ow === 1 ? { forward: 'ride', backward: contra } : { forward: contra, backward: 'ride' };
 }
 
+/** Barriers bikes can never get through, whatever the access tags. */
+const ALWAYS_BLOCKING = new Set(['turnstile', 'full-height_turnstile', 'stile', 'fence', 'wall', 'wire_fence', 'retaining_wall', 'hedge']);
+/** Barriers that close a passage when access is restricted (gates and similar). */
+const GATES = new Set(['gate', 'lift_gate', 'swing_gate', 'sliding_gate', 'chain', 'hampshire_gate', 'wicket_gate', 'bump_gate', 'spikes']);
+
+/**
+ * True when a barrier node closes the way to bikes (audit 2026-11-25: ~620 private gates and ~140
+ * locked ones sat on the network). A gate is closed when private, forbidden, locked or bicycle=no,
+ * unless bikes are explicitly allowed. Bollards, kerbs, blocks and cycle barriers stay passable.
+ */
+export function barrierBlocksBikes(tags: Tags): boolean {
+  const b = tags['barrier'];
+  if (!b) return false;
+  if (BIKE_ALLOWED.has(tags['bicycle'] ?? '')) return false;
+  if (ALWAYS_BLOCKING.has(b)) return true;
+  if (!GATES.has(b)) return false;
+  return tags['locked'] === 'yes' || tags['bicycle'] === 'no' || tags['access'] === 'no' || tags['access'] === 'private';
+}
+
 /** Audit grouping of highway values. */
 export type RoadGroup = 'main' | 'service' | 'soft';
 

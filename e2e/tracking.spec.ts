@@ -78,5 +78,6 @@ test('tracking: progress, off-route recalculation, imprecise GPS, report, arriva
   await moveTo(page, [end[0] + 0.00005, end[1]]);
   await expect(page.getByRole('dialog', { name: 'Arrivée' })).toContainText('1 signalement');
   await page.getByRole('dialog', { name: 'Arrivée' }).getByRole('button', { name: 'Terminer' }).click();
-  await waitForState(page, "s.mode === 'map' && s.tracking === null");
+  // Arrived: the trip is over, the map is ready for the next one.
+  await waitForState(page, "s.mode === 'map' && s.tracking === null && s.to === null");
 });

@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Router, type EdgePoint, type SearchResult } from '../src/core/astar.ts';
-import { type Tags, directionalAccess } from '../src/core/classify.ts';
+import { type Tags, barrierBlocksBikes, directionalAccess } from '../src/core/classify.ts';
 import { LEVELS, computeArcCosts } from '../src/core/cost.ts';
 import { FLAG_PUSH, type Graph, arcEdgeIndex, arcReversed, parseGraph } from '../src/core/graph.ts';
 import { assembleRoute, pointOnEdge } from '../src/core/route.ts';
@@ -15,6 +15,7 @@ import { rng } from './helpers/graph.ts';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const GRAPH = path.join(ROOT, 'public/data/milano-graph.bin');
 const RAW = path.join(ROOT, 'data/raw/highways.json');
+const NODES = path.join(ROOT, 'data/raw/nodes.json');
 const PAIRS = 200;
 const EPS = 0.5; // meters-equivalent, Float32 lengths
 
@@ -104,5 +105,21 @@ describe.skipIf(!existsSync(GRAPH))('real Milan graph (SPEC §12)', () => {
       }
     }
     expect(violations).toEqual([]);
+  });
+
+  it.skipIf(!existsSync(NODES))('never goes through a closed gate (audit 2026-11-25)', { timeout: 120_000 }, () => {
+    const gates = new Set<string>();
+    for (const n of (JSON.parse(readFileSync(NODES, 'utf8')) as { elements: { type: string; lon: number; lat: number; tags?: Tags }[] }).elements) {
+      if (n.type === 'node' && n.tags && barrierBlocksBikes(n.tags)) gates.add(`${n.lon.toFixed(6)},${n.lat.toFixed(6)}`);
+    }
+    expect(gates.size).toBeGreaterThan(100);
+    let through = 0;
+    for (const [a, b] of pairs.slice(0, 100)) {
+      const res = router.search(costs[0]!, a, b); // the shortest level is the one tempted to cut through
+      if (!res) continue;
+      const line = assembleRoute(g, res).polyline;
+      for (const [lon, lat] of line.slice(1, -1)) if (gates.has(`${lon.toFixed(6)},${lat.toFixed(6)}`)) through++;
+    }
+    expect(through).toBe(0);
   });
 });

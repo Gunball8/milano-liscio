@@ -21,9 +21,11 @@ export interface Edge {
  * Splits ways at every node shared by two or more of them (SPEC §6.4): graph nodes are way ends
  * and shared nodes. Consecutive pieces are never merged across ways, so an edge has one tag set.
  */
-export function splitIntoEdges(ways: OsmWay[]): Edge[] {
+export function splitIntoEdges(ways: OsmWay[], forceSplit: ReadonlySet<number> = new Set()): Edge[] {
   const usage = new Map<number, number>();
   for (const w of ways) for (const n of w.nodes) usage.set(n, (usage.get(n) ?? 0) + 1);
+  // extra split points (e.g. closed gates), so they become graph nodes
+  for (const n of forceSplit) if (usage.has(n)) usage.set(n, Math.max(2, usage.get(n)!));
 
   const edges: Edge[] = [];
   ways.forEach((w, wayIdx) => {

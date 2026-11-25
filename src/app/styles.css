@@ -1307,3 +1307,18 @@ details summary {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+.update-banner {
+  position: fixed;
+  left: calc(10px + var(--safe-left));
+  right: calc(10px + var(--safe-right));
+  bottom: calc(var(--panel-h) + 12px);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 18px;
+  font-weight: 600;
+}
